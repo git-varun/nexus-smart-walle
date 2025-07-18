@@ -2,16 +2,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@account-abstraction/contracts/core/BaseAccount.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import "../interfaces/ISmartAccount.sol";
-import "../interfaces/IModule.sol";
+import {IModule} from "../interfaces/IModule.sol";
+import {ISmartAccount} from "../interfaces/ISmartAccount.sol";
+import {BaseAccount} from "@account-abstraction/contracts/core/BaseAccount.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title SmartAccount
@@ -19,24 +21,37 @@ import "../interfaces/IModule.sol";
  * @author Smart Wallet Team
  */
 contract SmartAccount is
-    BaseAccount,
-    UUPSUpgradeable,
-    Initializable,
-    IERC1271,
-    ISmartAccount
+Initializable,
+UUPSUpgradeable,
+BaseAccount,
+ISmartAccount,
+IERC1271
 {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
-    // Storage
     address private _owner;
     uint256 private _nonce;
     mapping(address => bool) private _modules;
     address[] private _modulesList;
+    IEntryPoint private immutable _entryPoint;
 
     // Constants
     bytes4 private constant MAGICVALUE = 0x1626ba7e;
     bytes4 private constant INVALID_SIGNATURE = 0xffffffff;
+
+    // Add this required function
+    function entryPoint() public view override returns (IEntryPoint) {
+        return _entryPoint;
+    }
+
+    /**
+     * @dev Constructor - disable initializers for implementation
+     */
+    constructor(IEntryPoint anEntryPoint) BaseAccount() {
+        _entryPoint = anEntryPoint;
+        _disableInitializers();
+    }
 
     // Modifiers
     modifier onlyOwner() {
@@ -58,13 +73,6 @@ contract SmartAccount is
             "SmartAccount: caller is not EntryPoint or owner"
         );
         _;
-    }
-
-    /**
-     * @dev Constructor - disable initializers for implementation
-     */
-    constructor(IEntryPoint anEntryPoint) BaseAccount(anEntryPoint) {
-        _disableInitializers();
     }
 
     /**
@@ -118,7 +126,7 @@ contract SmartAccount is
      * @dev Add a module to the account
      * @param module Module address to add
      */
-    function addModule(address module) external override onlyOwner {
+    function addModule(address module) public virtual override onlyOwner {
         if (module == address(0)) revert InvalidModule();
         if (_modules[module]) return; // Already added
 
@@ -137,7 +145,7 @@ contract SmartAccount is
      * @dev Remove a module from the account
      * @param module Module address to remove
      */
-    function removeModule(address module) external override onlyOwner {
+    function removeModule(address module) public virtual override onlyOwner {
         if (!_modules[module]) revert InvalidModule();
 
         _modules[module] = false;
@@ -164,7 +172,7 @@ contract SmartAccount is
      * @param module Module address to check
      * @return True if module is enabled
      */
-    function isModuleEnabled(address module) external view override returns (bool) {
+    function isModuleEnabled(address module) public view override returns (bool) {
         return _modules[module];
     }
 
@@ -180,7 +188,7 @@ contract SmartAccount is
      * @dev Get the current nonce
      * @return Current nonce value
      */
-    function getNonce() external view override returns (uint256) {
+    function getNonce() public view override(BaseAccount, ISmartAccount) returns (uint256) {
         return _nonce;
     }
 
@@ -188,7 +196,7 @@ contract SmartAccount is
      * @dev Get list of enabled modules
      * @return Array of module addresses
      */
-    function getModules() external view returns (address[] memory) {
+    function getModules() public view returns (address[] memory) {
         return _modulesList;
     }
 
@@ -212,8 +220,12 @@ contract SmartAccount is
     function _validateSignature(
         PackedUserOperation calldata userOp,
         bytes32 userOpHash
-    ) internal view override returns (uint256 validationData) {
-        bytes32 hash = userOpHash.toEthSignedMessageHash();
+    ) internal override returns (uint256 validationData) {
+        // First validate the nonce
+        require(userOp.nonce == _nonce, "SmartAccount: invalid nonce");
+        _incrementNonce();
+
+         bytes32 hash = userOpHash.toEthSignedMessageHash();
         address recovered = hash.recover(userOp.signature);
 
         if (recovered == _owner) {
@@ -231,7 +243,7 @@ contract SmartAccount is
     /**
      * @dev Get the current nonce for EntryPoint
      */
-    function nonce() public view override returns (uint256) {
+    function nonce() public view returns (uint256) {
         return _nonce;
     }
 
@@ -319,7 +331,7 @@ contract SmartAccount is
             } else {
                 assembly {
                     let returndata_size := mload(result)
-                    return(add(32, result), returndata_size)
+                    return (add(32, result), returndata_size)
                 }
             }
         }
@@ -332,23 +344,26 @@ contract SmartAccount is
      * @return module Module address or zero if not found
      */
     function _findModuleForSelector(bytes4 selector) internal view returns (address module) {
-        // This is a simplified implementation
-        // In production, you'd have a more sophisticated module routing system
+        // Check each enabled module
         for (uint256 i = 0; i < _modulesList.length; i++) {
-            if (_modules[_modulesList[i]]) {
-                // Check if module supports this selector
-                // This would require modules to implement a function selector registry
-                return _modulesList[i];
+            address moduleAddr = _modulesList[i];
+            if (_modules[moduleAddr]) {
+                // Use low-level staticcall to test if module supports the selector
+                (bool success,) = moduleAddr.staticcall(abi.encodeWithSelector(selector));
+                if (success) {
+                    // If the call succeeds, the module likely supports this selector
+                    return moduleAddr;
+                }
+                // If call fails, continue to next module
             }
         }
         return address(0);
     }
 
     /**
-     * @dev Override _validateNonce to increment our internal nonce
+     * @dev Override _validateNonce to just validate without incrementing
      */
-    function _validateNonce(uint256 nonce_) internal override {
+    function _validateNonce(uint256 nonce_) internal view override {
         require(nonce_ == _nonce, "SmartAccount: invalid nonce");
-        _incrementNonce();
     }
 }

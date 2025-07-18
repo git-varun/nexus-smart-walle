@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {IModule} from "../interfaces/IModule.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import "../interfaces/IModule.sol";
 
 /**
  * @title ModuleRegistry
@@ -423,7 +423,6 @@ contract ModuleRegistry is Ownable {
      * @return Array of matching module addresses
      */
     function searchModules(string calldata query) external view returns (address[] memory) {
-        bytes32 queryHash = keccak256(bytes(query));
         address[] memory matches = new address[](_allModules.length);
         uint256 matchCount = 0;
 

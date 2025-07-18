@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "./IModule.sol";
+import {IModule} from "./IModule.sol";
 
 /**
  * @title ISessionKeyModule
@@ -86,9 +86,9 @@ interface ISessionKeyModule is IModule {
      * @return SessionKey struct
      */
     function getSessionKey(address account, address sessionKey)
-        external
-        view
-        returns (SessionKey memory);
+    external
+    view
+    returns (SessionKey memory);
 
     /**
      * @dev Get all session keys for an account

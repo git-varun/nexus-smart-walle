@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import "../interfaces/IModule.sol";
+import {IModule} from "../interfaces/IModule.sol";
+
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /**
  * @title RecoveryModule
@@ -77,6 +78,10 @@ contract RecoveryModule is ERC165, Ownable, IModule {
     event GuardianAdded(address indexed account, address indexed guardian);
     event GuardianRemoved(address indexed account, address indexed guardian);
 
+    // Events for module lifecycle
+    event ModuleInitialized(address indexed account);
+    event ModuleDeinitialized(address indexed account);
+
     // Errors
     error InvalidGuardian();
     error InvalidThreshold();
@@ -112,7 +117,7 @@ contract RecoveryModule is ERC165, Ownable, IModule {
 
         if (data.length > 0) {
             (address[] memory guardians, uint256 threshold, uint256 delay) =
-                abi.decode(data, (address[], uint256, uint256));
+                                abi.decode(data, (address[], uint256, uint256));
 
             _setupRecovery(account, guardians, threshold, delay);
         }
@@ -469,10 +474,10 @@ contract RecoveryModule is ERC165, Ownable, IModule {
         RecoveryRequest storage request = _pendingRecoveries[account];
 
         return request.executeAfter > 0 &&
-               !request.isExecuted &&
-               !request.isCancelled &&
-               block.timestamp >= request.executeAfter &&
-               request.approvedBy.length >= config.threshold;
+            !request.isExecuted &&
+            !request.isCancelled &&
+            block.timestamp >= request.executeAfter &&
+            request.approvedBy.length >= config.threshold;
     }
 
     // Internal functions
@@ -502,7 +507,7 @@ contract RecoveryModule is ERC165, Ownable, IModule {
     function _changeAccountOwner(address account, address newOwner) internal {
         // This should call the actual smart account to change the owner
         // Implementation depends on your smart account interface
-        (bool success, ) = account.call(
+        (bool success,) = account.call(
             abi.encodeWithSignature("transferOwnership(address)", newOwner)
         );
         require(success, "RecoveryModule: owner change failed");

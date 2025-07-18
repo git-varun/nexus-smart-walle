@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "./SmartAccount.sol";
-import "../modules/ModuleRegistry.sol";
+import {ISmartAccount} from "../interfaces/ISmartAccount.sol";
+import {ModuleRegistry} from "../modules/ModuleRegistry.sol";
+import {SmartAccount} from "./SmartAccount.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 /**
  * @title SmartAccountV2

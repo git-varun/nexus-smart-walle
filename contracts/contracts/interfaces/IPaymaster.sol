@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
+import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 
 /**
  * @title IVerifyingPaymaster

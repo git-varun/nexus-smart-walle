@@ -1,20 +1,19 @@
-// contracts/contracts/paymaster/VerifyingPaymaster.sol
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@account-abstraction/contracts/core/BasePaymaster.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IPaymaster.sol";
+import {IVerifyingPaymaster} from "../interfaces/IPaymaster.sol";
+import {BasePaymaster} from "@account-abstraction/contracts/core/BasePaymaster.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 /**
  * @title VerifyingPaymaster
  * @dev Paymaster that verifies signatures before sponsoring gas
  * @author Smart Wallet Team
  */
-contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
+contract VerifyingPaymaster is BasePaymaster, IVerifyingPaymaster {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
@@ -29,9 +28,8 @@ contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
 
     // Events
     event SignerChanged(address indexed previousSigner, address indexed newSigner);
-    event DepositAdded(address indexed account, uint256 amount);
-    event DepositWithdrawn(address indexed account, uint256 amount);
     event UserOperationSponsored(address indexed sender, bytes32 userOpHash, uint256 actualGasCost);
+    event GasCostExceeded(address indexed sender, bytes32 userOpHash, uint256 actualCost, uint256 maxCost);
 
     /**
      * @dev Constructor
@@ -43,9 +41,15 @@ contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
         IEntryPoint _entryPoint,
         address _owner,
         address _initialSigner
-    ) BasePaymaster(_entryPoint) Ownable(_owner) {
+    ) BasePaymaster(_entryPoint) {
         if (_initialSigner == address(0)) revert InvalidSigner();
         _verifyingSigner = _initialSigner;
+
+        // Transfer ownership to the specified owner if different from msg.sender
+        if (_owner != msg.sender) {
+            _transferOwnership(_owner);
+        }
+
         emit SignerChanged(address(0), _initialSigner);
     }
 
@@ -106,8 +110,8 @@ contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
      * @param userOp UserOperation to validate
      * @param userOpHash Hash of the UserOperation
      * @param maxCost Maximum gas cost for this operation
-     * @return validationData Packed validation data
      * @return context Context data for postOp
+     * @return validationData Packed validation data
      */
     function _validatePaymasterUserOp(
         PackedUserOperation calldata userOp,
@@ -122,9 +126,9 @@ contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
         }
 
         // Extract timestamp and signature from paymasterAndData
-        uint48 validUntil = uint48(bytes6(paymasterAndData[VALID_TIMESTAMP_OFFSET:VALID_TIMESTAMP_OFFSET + 6]));
-        uint48 validAfter = uint48(bytes6(paymasterAndData[VALID_TIMESTAMP_OFFSET + 6:VALID_TIMESTAMP_OFFSET + 12]));
-        bytes calldata signature = paymasterAndData[SIGNATURE_OFFSET:];
+        uint48 validUntil = uint48(bytes6(paymasterAndData[VALID_TIMESTAMP_OFFSET : VALID_TIMESTAMP_OFFSET + 6]));
+        uint48 validAfter = uint48(bytes6(paymasterAndData[VALID_TIMESTAMP_OFFSET + 6 : VALID_TIMESTAMP_OFFSET + 12]));
+        bytes calldata signature = paymasterAndData[SIGNATURE_OFFSET :];
 
         // Verify signature
         bytes32 hash = keccak256(abi.encodePacked(
@@ -194,6 +198,13 @@ contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
             (address, uint256, bytes32)
         );
 
+        // Validate that actual cost doesn't exceed maximum expected cost
+        if (actualGasCost > maxCost) {
+            // Log the discrepancy but still process the payment
+            // In a production system, you might want to emit an event or take other action
+            emit GasCostExceeded(sender, userOpHash, actualGasCost, maxCost);
+        }
+
         // Deduct cost from user's deposit or general paymaster deposit
         if (_deposits[sender] >= actualGasCost) {
             _deposits[sender] -= actualGasCost;
@@ -262,21 +273,21 @@ contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
      * @return signature Paymaster signature
      */
     function parsePaymasterAndData(bytes calldata paymasterAndData)
-        external
-        pure
-        returns (
-            uint48 validUntil,
-            uint48 validAfter,
-            bytes calldata signature
-        )
+    external
+    pure
+    returns (
+        uint48 validUntil,
+        uint48 validAfter,
+        bytes calldata signature
+    )
     {
         if (paymasterAndData.length < SIGNATURE_OFFSET) {
             revert PaymasterDataTooShort();
         }
 
-        validUntil = uint48(bytes6(paymasterAndData[VALID_TIMESTAMP_OFFSET:VALID_TIMESTAMP_OFFSET + 6]));
-        validAfter = uint48(bytes6(paymasterAndData[VALID_TIMESTAMP_OFFSET + 6:VALID_TIMESTAMP_OFFSET + 12]));
-        signature = paymasterAndData[SIGNATURE_OFFSET:];
+        validUntil = uint48(bytes6(paymasterAndData[VALID_TIMESTAMP_OFFSET : VALID_TIMESTAMP_OFFSET + 6]));
+        validAfter = uint48(bytes6(paymasterAndData[VALID_TIMESTAMP_OFFSET + 6 : VALID_TIMESTAMP_OFFSET + 12]));
+        signature = paymasterAndData[SIGNATURE_OFFSET :];
     }
 
     /**
@@ -316,9 +327,9 @@ contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
      * @return deposits Array of deposit amounts
      */
     function getMultipleDeposits(address[] calldata accounts)
-        external
-        view
-        returns (uint256[] memory deposits)
+    external
+    view
+    returns (uint256[] memory deposits)
     {
         deposits = new uint256[](accounts.length);
         for (uint256 i = 0; i < accounts.length; i++) {
@@ -335,13 +346,13 @@ contract VerifyingPaymaster is Ownable, BasePaymaster, IVerifyingPaymaster {
     }
 
     function _packValidationData(
-    bool sigFailed,
-    uint48 validUntil,
-    uint48 validAfter
-) internal pure returns (uint256) {
-    return
-        (sigFailed ? 1 : 0) |
-        (uint256(validUntil) << 8) |
-        (uint256(validAfter) << (8 + 48));
-}
+        bool sigFailed,
+        uint48 validUntil,
+        uint48 validAfter
+    ) internal pure returns (uint256) {
+        return
+            (sigFailed ? 1 : 0) |
+            (uint256(validUntil) << 8) |
+            (uint256(validAfter) << (8 + 48));
+    }
 }

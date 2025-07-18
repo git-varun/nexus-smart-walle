@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IModule.sol";
-import "../interfaces/ISessionKeyModule.sol";
+import {IModule} from "../interfaces/IModule.sol";
+import {ISessionKeyModule} from "../interfaces/ISessionKeyModule.sol";
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title SessionKeyModule
