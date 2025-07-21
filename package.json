@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "Modular Smart Wallet with ERC-4337 Account Abstraction",
   "private": true,
-  "workspaces": [
-    "contracts",
-    "frontend"
-  ],
   "scripts": {
     "install:all": "npm install && npm run install:contracts && npm run install:frontend",
     "install:contracts": "cd contracts && npm install",
