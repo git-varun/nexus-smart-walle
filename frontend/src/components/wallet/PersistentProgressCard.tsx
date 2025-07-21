@@ -1,5 +1,5 @@
-import React, {useState, useEffect} from 'react';
-import {useSmartAccount} from '../../hooks/useSmartAccount';
+import React, {useEffect, useState} from 'react';
+import {useSmartAccount} from '@/hooks/useSmartAccount.ts';
 
 export const PersistentProgressCard: React.FC = () => {
     const {creationProgress, isCreatingAccount} = useSmartAccount();

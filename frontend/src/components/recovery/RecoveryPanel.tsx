@@ -1,6 +1,6 @@
 // frontend/src/components/recovery/RecoveryPanel.tsx
 import React, {useState} from 'react';
-import {useRecovery} from '../../hooks/useRecovery';
+import {useRecovery} from '@/hooks/useRecovery.ts';
 import {Card} from '../ui/Card';
 import {GuardianSetup} from './GuardianSetup';
 import {RecoveryProcess} from './RecoveryProcess';

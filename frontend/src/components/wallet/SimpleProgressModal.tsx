@@ -1,11 +1,5 @@
-import React, {useState, useEffect} from 'react';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription
-} from '../ui/Dialog';
+import React, {useEffect, useState} from 'react';
+import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '../ui/Dialog';
 import {Button} from '../ui/Button';
 import {useSmartAccount} from '../../hooks/useSmartAccount';
 

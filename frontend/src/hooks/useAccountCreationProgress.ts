@@ -1,4 +1,4 @@
-import {useState, useCallback} from 'react';
+import {useCallback, useState} from 'react';
 import {ProgressStep} from '../components/ui/Progress';
 
 export interface AccountCreationStep {

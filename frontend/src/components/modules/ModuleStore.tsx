@@ -1,6 +1,6 @@
 // frontend/src/components/modules/ModuleStore.tsx
 import React, {useState} from 'react';
-import {useModuleRegistry} from '../../hooks/useModuleRegistry';
+import {useModuleRegistry} from '@/hooks/useModuleRegistry.ts';
 import {Card} from '../ui/Card';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';

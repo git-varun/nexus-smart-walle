@@ -1,11 +1,11 @@
 // frontend/src/App.tsx
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query'
-import {Config, WagmiProvider} from 'wagmi'
+import {WagmiProvider} from 'wagmi'
 import {RainbowKitProvider} from '@rainbow-me/rainbowkit'
 import {Provider} from 'react-redux'
 import {PersistGate} from 'redux-persist/integration/react'
 import {config} from './config/wagmi'
-import {store, persistor} from './store/store'
+import {persistor, store} from './store/store'
 import {MainLayout} from './components/layout/MainLayout'
 import './globals.css'
 import '@rainbow-me/rainbowkit/styles.css'

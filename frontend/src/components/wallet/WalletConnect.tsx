@@ -3,10 +3,7 @@ import React, {useState} from 'react';
 import {ConnectButton} from '@rainbow-me/rainbowkit';
 import {useSmartAccount} from '../../hooks/useSmartAccount';
 import {Button} from '../ui/Button';
-import {SmartAccountCreationModal} from './SmartAccountCreationModal';
 import {SimpleProgressModal} from './SimpleProgressModal';
-import {InlineProgressIndicator} from './InlineProgressIndicator';
-import {PersistentProgressCard} from './PersistentProgressCard';
 
 export const WalletConnect: React.FC = () => {
     const {

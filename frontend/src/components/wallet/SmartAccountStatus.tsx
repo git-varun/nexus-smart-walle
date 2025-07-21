@@ -1,8 +1,8 @@
 import React from 'react';
-import {useSmartAccount} from '../../hooks/useSmartAccount';
+import {useSmartAccount} from '@/hooks/useSmartAccount.ts';
 import {ProgressBar} from '../ui/Progress';
 import {Spinner} from '../ui/Spinner';
-import {cn} from '../../utils/cn';
+import {cn} from '@/utils/cn.ts';
 
 interface SmartAccountStatusProps {
     className?: string;

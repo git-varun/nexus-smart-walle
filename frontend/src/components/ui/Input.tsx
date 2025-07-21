@@ -1,6 +1,6 @@
 // frontend/src/components/ui/Input.tsx
 import React from 'react';
-import {cn} from '../../utils/cn';
+import {cn} from '@/utils/cn.ts';
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string;

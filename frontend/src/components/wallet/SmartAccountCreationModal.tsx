@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription
-} from '../ui/Dialog';
+import {Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle} from '../ui/Dialog';
 import {Progress} from '../ui/Progress';
 import {Button} from '../ui/Button';
 import {useSmartAccount} from '../../hooks/useSmartAccount';
