@@ -3,7 +3,7 @@ import {useCallback, useEffect, useState} from 'react';
 import {useSmartAccount} from './useSmartAccount';
 import {useToast} from './useToast';
 import {CreateSessionKeyParams, SessionKey} from '../types/session';
-import {parseEther} from 'viem';
+import {apiClient, SessionKey as ApiSessionKey, SessionPermission} from '../services/apiClient';
 
 export const useSessionKeys = () => {
     const {smartAccountAddress} = useSmartAccount();
@@ -14,35 +14,43 @@ export const useSessionKeys = () => {
     const [isCreating, setIsCreating] = useState(false);
     const [isRevoking, setIsRevoking] = useState(false);
 
+    // Helper function to convert API session key to frontend format
+    const convertApiSessionKey = (apiKey: ApiSessionKey): SessionKey => {
+        // Calculate spending limit from permissions (use first permission as primary)
+        const primaryPermission = apiKey.permissions[0];
+        const spendingLimit = primaryPermission?.spendingLimit || '0';
+
+        return {
+            key: apiKey.id,
+            spendingLimit,
+            dailyLimit: spendingLimit, // Using same value for now
+            usedToday: '0', // API doesn't track this yet
+            lastUsedDay: 0, // API doesn't track this yet
+            expiryTime: Math.floor(new Date(apiKey.expiresAt).getTime() / 1000),
+            allowedTargets: apiKey.permissions.map(p => p.target),
+            isActive: apiKey.isActive
+        };
+    };
+
     // Fetch session keys
     const fetchSessionKeys = useCallback(async () => {
         if (!smartAccountAddress) return;
 
         setIsLoading(true);
         try {
-            // TODO: Implement real session key fetching
-            // This would involve calling the SessionKeyModule contract
+            const response = await apiClient.getSessionKeys();
 
-            // Mock data for now
-            const mockSessionKeys: SessionKey[] = [
-                {
-                    key: '0x' + Math.random().toString(16).substring(2, 42),
-                    spendingLimit: parseEther('0.1').toString(),
-                    dailyLimit: parseEther('1').toString(),
-                    usedToday: parseEther('0.05').toString(),
-                    lastUsedDay: Math.floor(Date.now() / 86400000),
-                    expiryTime: Math.floor(Date.now() / 1000) + 86400, // 24 hours
-                    allowedTargets: [],
-                    isActive: true
-                }
-            ];
-
-            setSessionKeys(mockSessionKeys);
+            if (response.success && response.data) {
+                const convertedKeys = response.data.map(convertApiSessionKey);
+                setSessionKeys(convertedKeys);
+            } else {
+                throw new Error(response.error?.message || 'Failed to fetch session keys');
+            }
         } catch (error) {
             console.error('Failed to fetch session keys:', error);
             toast({
                 title: 'Failed to Load Session Keys',
-                description: 'Could not load session keys',
+                description: error instanceof Error ? error.message : 'Could not load session keys',
                 variant: 'error'
             });
         } finally {
@@ -58,27 +66,36 @@ export const useSessionKeys = () => {
 
         setIsCreating(true);
         try {
-            // TODO: Implement real session key creation
-            // This would involve:
-            // 1. Call SessionKeyModule.addSessionKey
-            // 2. Wait for transaction confirmation
-            // 3. Refresh session keys list
+            // Convert frontend params to API format
+            const permissions: SessionPermission[] = [
+                {
+                    target: params.allowedTargets?.[0] || smartAccountAddress,
+                    allowedFunctions: ['transfer'], // Default allowed functions
+                    spendingLimit: params.spendingLimit,
+                }
+            ];
 
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const expiresAt = params.expiryTime ? params.expiryTime * 1000 : undefined;
 
-            toast({
-                title: 'Session Key Created',
-                description: 'New session key has been created successfully',
-                variant: 'success'
-            });
+            const response = await apiClient.createSessionKey(permissions, expiresAt);
 
-            // Refresh the list
-            await fetchSessionKeys();
+            if (response.success) {
+                toast({
+                    title: 'Session Key Created',
+                    description: 'New session key has been created successfully',
+                    variant: 'success'
+                });
+
+                // Refresh the list
+                await fetchSessionKeys();
+            } else {
+                throw new Error(response.error?.message || 'Failed to create session key');
+            }
         } catch (error) {
             console.error('Failed to create session key:', error);
             toast({
                 title: 'Creation Failed',
-                description: 'Failed to create session key',
+                description: error instanceof Error ? error.message : 'Failed to create session key',
                 variant: 'error'
             });
             throw error;
@@ -93,24 +110,25 @@ export const useSessionKeys = () => {
 
         setIsRevoking(true);
         try {
-            // TODO: Implement real session key revocation
-            // This would involve calling SessionKeyModule.revokeSessionKey
+            const response = await apiClient.revokeSessionKey(sessionKeyAddress);
 
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            if (response.success) {
+                // Remove from local state
+                setSessionKeys(prev => prev.filter(sk => sk.key !== sessionKeyAddress));
 
-            // Remove from local state
-            setSessionKeys(prev => prev.filter(sk => sk.key !== sessionKeyAddress));
-
-            toast({
-                title: 'Session Key Revoked',
-                description: 'Session key has been revoked successfully',
-                variant: 'success'
-            });
+                toast({
+                    title: 'Session Key Revoked',
+                    description: 'Session key has been revoked successfully',
+                    variant: 'success'
+                });
+            } else {
+                throw new Error(response.error?.message || 'Failed to revoke session key');
+            }
         } catch (error) {
             console.error('Failed to revoke session key:', error);
             toast({
                 title: 'Revocation Failed',
-                description: 'Failed to revoke session key',
+                description: error instanceof Error ? error.message : 'Failed to revoke session key',
                 variant: 'error'
             });
         } finally {

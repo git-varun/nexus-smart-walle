@@ -2,6 +2,8 @@
 import {useCallback, useEffect, useState} from 'react';
 import {useSmartAccount} from './useSmartAccount';
 import {useToast} from './useToast';
+import {apiClient} from '../services/apiClient';
+import {Address} from 'viem';
 
 interface RecoveryConfig {
     guardians: string[];
@@ -104,37 +106,56 @@ export const useRecovery = () => {
     }, [smartAccountAddress, toast, fetchRecoveryConfig]);
 
     // Initiate recovery
-    const initiateRecovery = useCallback(async (newOwner: string) => {
+    const initiateRecovery = useCallback(async (newOwner: string, guardians?: string[], threshold?: number) => {
         if (!smartAccountAddress) {
             throw new Error('Smart account not connected');
         }
 
         setIsLoading(true);
         try {
-            // TODO: Implement real recovery initiation
+            // Use provided guardians or default ones from config
+            const recGuardians = guardians || recoveryConfig?.guardians || [
+                '0x742A4A0BfF7C58e3b52F6c51ede22f7B8F4CAb0E',
+                '0x8F4CAb0E742A4A0BfF7C58e3b52F6c51ede22f7B'
+            ];
+            const recThreshold = threshold || recoveryConfig?.threshold || 1;
 
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const response = await apiClient.initiateRecovery(
+                smartAccountAddress as Address,
+                recGuardians as Address[],
+                recThreshold
+            );
 
-            toast({
-                title: 'Recovery Initiated',
-                description: 'Recovery process has been started',
-                variant: 'success'
-            });
+            if (response.success) {
+                toast({
+                    title: 'Recovery Initiated',
+                    description: `Recovery request ${response.data.id} has been created`,
+                    variant: 'success'
+                });
 
-            // Refresh pending recovery
-            await fetchPendingRecovery();
+                // Update pending recovery with the new request
+                setPendingRecovery({
+                    newOwner,
+                    executeAfter: Date.now() + (48 * 3600 * 1000), // 48 hours from now
+                    approvedBy: [],
+                    isExecuted: false,
+                    isCancelled: false
+                });
+            } else {
+                throw new Error(response.error?.message || 'Failed to initiate recovery');
+            }
         } catch (error) {
             console.error('Failed to initiate recovery:', error);
             toast({
                 title: 'Recovery Initiation Failed',
-                description: 'Failed to start recovery process',
+                description: error instanceof Error ? error.message : 'Failed to start recovery process',
                 variant: 'error'
             });
             throw error;
         } finally {
             setIsLoading(false);
         }
-    }, [smartAccountAddress, toast, fetchPendingRecovery]);
+    }, [smartAccountAddress, toast, recoveryConfig]);
 
     // Approve recovery
     const approveRecovery = useCallback(async () => {
