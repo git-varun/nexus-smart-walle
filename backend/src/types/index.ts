@@ -31,6 +31,8 @@ export interface SessionKey {
     permissions: string[];
     expiresAt: Date;
     isActive: boolean;
+    ownerAddress: string;
+    email?: string;
 }
 
 export interface RecoveryRequest {
@@ -40,4 +42,58 @@ export interface RecoveryRequest {
     threshold: number;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: Date;
+}
+
+export interface AlchemyServiceConfig {
+    apiKey: string;
+    policyId?: string;
+    chainId: number;
+    enableGasManager?: boolean;
+}
+
+export interface TransactionHistory {
+    id: string;
+    hash: Hash;
+    userOpHash?: Hash;
+    from: Address;
+    to: Address;
+    value: string;
+    data?: string;
+    status: 'pending' | 'success' | 'failed';
+    timestamp: number;
+    gasUsed?: string;
+    blockNumber?: number;
+    receipt?: any;
+}
+
+export interface AuthSession {
+    id: string;
+    userId: string;
+    email?: string;
+    eoaAddress?: Address;
+    smartAccountAddress?: Address;
+    ownerAddress?: Address;
+    isAuthenticated: boolean;
+    createdAt: Date;
+    lastActiveAt: Date;
+    expiresAt: Date;
+}
+
+export interface AuthenticationParams {
+    type: 'email' | 'eoa';
+    email?: string;
+    eoaAddress?: Address;
+    signature?: string;
+}
+
+export interface GuardianApproval {
+    guardianAddress: Address;
+    signature: string;
+    timestamp: number;
+}
+
+export interface ExtendedRecoveryRequest extends RecoveryRequest {
+    approvals: GuardianApproval[];
+    newOwner?: Address;
+    expiresAt: Date;
 }

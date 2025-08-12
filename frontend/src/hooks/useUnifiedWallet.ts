@@ -1,4 +1,4 @@
-import {useAccount, useDisconnect} from 'wagmi';
+import {useAccount, useBalance, useDisconnect} from 'wagmi';
 import {useBackendSmartAccount} from './useBackendSmartAccount';
 
 /**
@@ -12,6 +12,14 @@ export function useUnifiedWallet() {
         connector
     } = useAccount();
     const {disconnect: disconnectMetaMask} = useDisconnect();
+
+    // MetaMask balance
+    const {data: metamaskBalance} = useBalance({
+        address: metamaskAddress,
+        query: {
+            enabled: isMetaMaskConnected && !!metamaskAddress
+        }
+    });
 
     // Email-based smart account state
     const {
@@ -35,7 +43,7 @@ export function useUnifiedWallet() {
     const userInfo = isMetaMaskConnected
         ? {type: 'metamask' as const, address: metamaskAddress, connector: connector?.name}
         : emailUser
-            ? {type: 'email' as const, ...emailUser, address: emailSmartAccountAddress}
+            ? {type: 'email' as const, ...emailUser, userId: emailUser.id, address: emailSmartAccountAddress}
             : null;
 
     // Unified actions
@@ -68,10 +76,12 @@ export function useUnifiedWallet() {
         userInfo,
         loading: emailLoading,
         error: emailError,
+        balance: isMetaMaskConnected ? metamaskBalance?.value || BigInt(0) : emailBalance,
 
         // MetaMask specific
         isMetaMaskConnected,
         metamaskAddress,
+        metamaskBalance: metamaskBalance?.value || BigInt(0),
 
         // Email specific
         isEmailAuthenticated,

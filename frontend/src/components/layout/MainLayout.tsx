@@ -2,30 +2,15 @@
 import React from 'react';
 import {WalletTypeSelector} from '../wallet/WalletTypeSelector';
 import {WalletDashboard} from '../wallet/WalletDashboard';
-import {useBackendSmartAccount} from '../../hooks/useBackendSmartAccount';
+import {HealthStatusIcon} from '../health/HealthStatusIcon';
+import {useBackendSmartAccount} from '@/hooks/useBackendSmartAccount.ts';
 import {useAccount} from 'wagmi';
+import {useHealthMonitor} from '../../hooks/useHealthMonitor';
 
 export const MainLayout: React.FC = () => {
     const {isAuthenticated, smartAccountAddress} = useBackendSmartAccount();
     const {isConnected} = useAccount();
-
-    console.log('🏗️ MainLayout render:', {
-        isAuthenticated,
-        smartAccountAddress,
-        isConnected,
-        shouldShowDashboard: isAuthenticated || isConnected,
-        shouldShowSelector: !isAuthenticated && !isConnected
-    });
-
-    // Watch for smartAccountAddress changes
-    React.useEffect(() => {
-        console.log('🔄 MainLayout: smartAccountAddress changed to:', smartAccountAddress);
-        if (smartAccountAddress) {
-            console.log('✅ MainLayout: Smart account detected, components should now be visible');
-        } else {
-            console.log('❌ MainLayout: No smart account, components hidden');
-        }
-    }, [smartAccountAddress]);
+    const {health, refresh} = useHealthMonitor();
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -46,11 +31,6 @@ export const MainLayout: React.FC = () => {
 
                 {/* Main Content */}
                 <main className="space-y-8">
-                    {/* Debug Info */}
-                    <div className="fixed top-4 right-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs z-50">
-                        Email Auth: {isAuthenticated ? '✅' : '❌'} | MetaMask: {isConnected ? '✅' : '❌'}
-                    </div>
-
                     {/* Show selector if no wallet is connected */}
                     {!isAuthenticated && !isConnected && (
                         <WalletTypeSelector/>
@@ -69,6 +49,9 @@ export const MainLayout: React.FC = () => {
                     )}
                 </main>
             </div>
+
+            {/* Health Status Icon */}
+            <HealthStatusIcon health={health} onRefresh={refresh}/>
         </div>
     );
 };

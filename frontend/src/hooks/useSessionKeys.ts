@@ -69,7 +69,7 @@ export const useSessionKeys = () => {
             // Convert frontend params to API format
             const permissions: SessionPermission[] = [
                 {
-                    target: params.allowedTargets?.[0] || smartAccountAddress,
+                    target: (params.allowedTargets?.[0] || smartAccountAddress) as `0x${string}`,
                     allowedFunctions: ['transfer'], // Default allowed functions
                     spendingLimit: params.spendingLimit,
                 }
@@ -104,6 +104,25 @@ export const useSessionKeys = () => {
         }
     }, [smartAccountAddress, toast, fetchSessionKeys]);
 
+    // Validate session key
+    const validateSessionKey = useCallback(async (sessionKeyId: string): Promise<boolean> => {
+        if (!smartAccountAddress) return false;
+
+        try {
+            const response = await apiClient.validateSessionKey(sessionKeyId);
+
+            if (response.success && response.data) {
+                return response.data.isValid;
+            } else {
+                console.error('Failed to validate session key:', response.error?.message);
+                return false;
+            }
+        } catch (error) {
+            console.error('Failed to validate session key:', error);
+            return false;
+        }
+    }, [smartAccountAddress]);
+
     // Revoke session key
     const revokeSessionKey = useCallback(async (sessionKeyAddress: string) => {
         if (!smartAccountAddress) return;
@@ -136,6 +155,26 @@ export const useSessionKeys = () => {
         }
     }, [smartAccountAddress, toast]);
 
+    // Check expired session keys and update their status
+    const checkExpiredKeys = useCallback(async () => {
+        const now = Math.floor(Date.now() / 1000);
+        const updatedKeys = await Promise.all(
+            sessionKeys.map(async (key) => {
+                if (key.expiryTime <= now && key.isActive) {
+                    // Key has expired, validate with backend
+                    const isValid = await validateSessionKey(key.key);
+                    return {...key, isActive: isValid};
+                }
+                return key;
+            })
+        );
+
+        // Update state if any keys changed
+        if (JSON.stringify(updatedKeys) !== JSON.stringify(sessionKeys)) {
+            setSessionKeys(updatedKeys);
+        }
+    }, [sessionKeys, validateSessionKey]);
+
     // Auto-fetch when smart account changes
     useEffect(() => {
         if (smartAccountAddress) {
@@ -145,6 +184,14 @@ export const useSessionKeys = () => {
         }
     }, [smartAccountAddress, fetchSessionKeys]);
 
+    // Auto-check expired keys periodically
+    useEffect(() => {
+        if (sessionKeys.length > 0) {
+            const interval = setInterval(checkExpiredKeys, 60000); // Check every minute
+            return () => clearInterval(interval);
+        }
+    }, [sessionKeys, checkExpiredKeys]);
+
     return {
         sessionKeys,
         isLoading,
@@ -152,6 +199,12 @@ export const useSessionKeys = () => {
         isRevoking,
         fetchSessionKeys,
         createSessionKey,
-        revokeSessionKey
+        revokeSessionKey,
+        validateSessionKey,
+        checkExpiredKeys,
+        // Computed values
+        activeSessionKeys: sessionKeys.filter(key => key.isActive),
+        expiredSessionKeys: sessionKeys.filter(key => !key.isActive || key.expiryTime <= Math.floor(Date.now() / 1000)),
+        totalSessionKeys: sessionKeys.length
     };
 };

@@ -1,0 +1,306 @@
+/* Web3 Modern Theme - Design Tokens and CSS Variables */
+
+/* Google Fonts - Modern Web3 Typography */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+
+/* CSS Variables for Web3 Theme */
+:root {
+    /* Space Theme Colors */
+    --color-space-50: #f8fafc;
+    --color-space-100: #f1f5f9;
+    --color-space-200: #e2e8f0;
+    --color-space-300: #cbd5e1;
+    --color-space-400: #94a3b8;
+    --color-space-500: #64748b;
+    --color-space-600: #475569;
+    --color-space-700: #334155;
+    --color-space-800: #1e293b;
+    --color-space-900: #0f172a;
+    --color-space-950: #020617;
+
+    /* Neon Accent Colors */
+    --color-neon-cyan: #06b6d4;
+    --color-neon-purple: #8b5cf6;
+    --color-neon-green: #10b981;
+    --color-neon-orange: #f59e0b;
+    --color-neon-pink: #ec4899;
+    --color-neon-red: #ef4444;
+
+    /* Web3 Semantic Colors */
+    --color-web3-primary: var(--color-neon-purple);
+    --color-web3-secondary: var(--color-neon-cyan);
+    --color-web3-accent: var(--color-neon-green);
+    --color-web3-warning: var(--color-neon-orange);
+    --color-web3-danger: var(--color-neon-red);
+    --color-web3-success: var(--color-neon-green);
+
+    /* Typography Scale */
+    --font-family-primary: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-family-secondary: 'Manrope', system-ui, -apple-system, sans-serif;
+    --font-family-mono: 'JetBrains Mono', 'Consolas', monospace;
+
+    /* Font Sizes - Modern Scale */
+    --font-size-xs: 0.75rem; /* 12px */
+    --font-size-sm: 0.875rem; /* 14px */
+    --font-size-base: 1rem; /* 16px */
+    --font-size-lg: 1.125rem; /* 18px */
+    --font-size-xl: 1.25rem; /* 20px */
+    --font-size-2xl: 1.5rem; /* 24px */
+    --font-size-3xl: 1.875rem; /* 30px */
+    --font-size-4xl: 2.25rem; /* 36px */
+    --font-size-5xl: 3rem; /* 48px */
+    --font-size-6xl: 3.75rem; /* 60px */
+
+    /* Font Weights */
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-extrabold: 800;
+
+    /* Spacing Scale */
+    --space-1: 0.25rem; /* 4px */
+    --space-2: 0.5rem; /* 8px */
+    --space-3: 0.75rem; /* 12px */
+    --space-4: 1rem; /* 16px */
+    --space-5: 1.25rem; /* 20px */
+    --space-6: 1.5rem; /* 24px */
+    --space-8: 2rem; /* 32px */
+    --space-10: 2.5rem; /* 40px */
+    --space-12: 3rem; /* 48px */
+    --space-16: 4rem; /* 64px */
+    --space-20: 5rem; /* 80px */
+
+    /* Border Radius */
+    --radius-sm: 0.25rem; /* 4px */
+    --radius-base: 0.5rem; /* 8px */
+    --radius-md: 0.75rem; /* 12px */
+    --radius-lg: 1rem; /* 16px */
+    --radius-xl: 1.25rem; /* 20px */
+    --radius-2xl: 1.5rem; /* 24px */
+    --radius-full: 9999px;
+
+    /* Web3 Specific Radius */
+    --radius-web3: var(--radius-lg);
+    --radius-cyber: var(--radius-md);
+
+    /* Shadows */
+    --shadow-neon: 0 0 20px rgba(139, 92, 246, 0.3);
+    --shadow-neon-cyan: 0 0 20px rgba(6, 182, 212, 0.3);
+    --shadow-neon-green: 0 0 20px rgba(16, 185, 129, 0.3);
+    --shadow-cyber: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 40px rgba(139, 92, 246, 0.1);
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.37);
+
+    /* Gradients */
+    --gradient-web3: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-neon: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+    --gradient-space: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    --gradient-cyber: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+
+    /* Animation Durations */
+    --duration-fast: 150ms;
+    --duration-normal: 300ms;
+    --duration-slow: 500ms;
+
+    /* Z-Index Scale */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+    --z-toast: 1080;
+
+    /* Dark Mode Design System */
+    --background: var(--color-space-950);
+    --foreground: var(--color-space-50);
+    --card: var(--color-space-900);
+    --card-foreground: var(--color-space-50);
+    --popover: var(--color-space-900);
+    --popover-foreground: var(--color-space-50);
+    --primary: var(--color-web3-primary);
+    --primary-foreground: var(--color-space-50);
+    --secondary: var(--color-space-800);
+    --secondary-foreground: var(--color-space-100);
+    --muted: var(--color-space-800);
+    --muted-foreground: var(--color-space-400);
+    --accent: var(--color-web3-accent);
+    --accent-foreground: var(--color-space-50);
+    --destructive: var(--color-web3-danger);
+    --destructive-foreground: var(--color-space-50);
+    --border: var(--color-space-700);
+    --input: var(--color-space-800);
+    --ring: var(--color-web3-primary);
+    --radius: var(--radius-web3);
+}
+
+/* Base Styles */
+* {
+    border-color: hsl(var(--border));
+}
+
+body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-family-primary);
+    font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Web3 Utility Classes */
+.text-neon-glow {
+    text-shadow: 0 0 10px currentColor;
+}
+
+.bg-glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bg-cyber-glass {
+    background: rgba(139, 92, 246, 0.1);
+    backdrop-filter: blur(var(--backdrop-blur-cyber));
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* Button Glow Effect */
+.btn-glow {
+    position: relative;
+    overflow: hidden;
+    transition: all var(--duration-normal) ease;
+}
+
+.btn-glow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent
+    );
+    transition: left var(--duration-slow) ease;
+}
+
+.btn-glow:hover::before {
+    left: 100%;
+}
+
+/* Neon Border Effect */
+.border-neon {
+    border: 2px solid var(--color-web3-primary);
+    box-shadow: var(--shadow-neon);
+}
+
+.border-neon-cyan {
+    border: 2px solid var(--color-neon-cyan);
+    box-shadow: var(--shadow-neon-cyan);
+}
+
+.border-neon-green {
+    border: 2px solid var(--color-neon-green);
+    box-shadow: var(--shadow-neon-green);
+}
+
+/* Scroll Bar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-space-900);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-space-700);
+    border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-web3-primary);
+    box-shadow: var(--shadow-neon);
+}
+
+/* Focus Styles */
+.focus-neon:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: var(--color-web3-primary);
+    ring-opacity: 0.5;
+    box-shadow: var(--shadow-neon);
+}
+
+/* Animation Classes */
+.animate-fade-in {
+    animation: fade-in var(--duration-slow) ease-out;
+}
+
+.animate-slide-up {
+    animation: slide-up var(--duration-normal) ease-out;
+}
+
+.animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+.animate-pulse-neon {
+    animation: pulse-neon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Loading Spinner */
+.spinner-neon {
+    border: 3px solid var(--color-space-700);
+    border-top: 3px solid var(--color-web3-primary);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive Typography */
+@media (max-width: 768px) {
+    :root {
+        --font-size-3xl: 1.5rem; /* 24px */
+        --font-size-4xl: 1.875rem; /* 30px */
+        --font-size-5xl: 2.25rem; /* 36px */
+        --font-size-6xl: 2.75rem; /* 44px */
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    :root {
+        --color-web3-primary: #a855f7;
+        --color-neon-cyan: #0891b2;
+        --color-neon-green: #059669;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

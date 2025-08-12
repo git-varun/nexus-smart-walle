@@ -17,15 +17,21 @@ interface AuthConnectRequest {
 }
 
 interface User {
+    id: string;
     email: string;
-    userId: string;
+    createdAt: string;
+    lastLogin?: string;
 }
 
 interface SmartAccountInfo {
+    id: string;
     address: Address;
+    chainId: number;
     isDeployed: boolean;
-    nonce: bigint;
-    balance?: bigint;
+    balance?: string;
+    nonce?: number;
+    createdAt: string;
+    updatedAt: string;
 }
 
 interface TransactionRequest {
@@ -35,10 +41,36 @@ interface TransactionRequest {
 }
 
 interface TransactionResult {
+    id: string;
     hash: string;
     userOpHash?: string;
-    success: boolean;
-    receipt?: any;
+    to: string;
+    value?: string;
+    data?: string;
+    status: 'pending' | 'confirmed' | 'failed';
+    gasUsed?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface TransactionHistory {
+    id: string;
+    hash: string;
+    userOpHash?: string;
+    to: Address;
+    value: string;
+    data?: string;
+    status: 'pending' | 'confirmed' | 'failed';
+    gasUsed?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface GasEstimate {
+    gasEstimate: string;
+    gasPrice?: string;
+    maxFeePerGas?: string;
+    maxPriorityFeePerGas?: string;
 }
 
 interface SessionPermission {
@@ -68,8 +100,8 @@ class ApiClient {
     private baseUrl: string;
 
     constructor() {
-        // Use environment variable or default to localhost
-        this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        // Use environment variable or default to backend port 3000
+        this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
     }
 
     private async request<T>(
@@ -125,112 +157,139 @@ class ApiClient {
         }
     }
 
-    // Authentication API
-    async getAuthStatus(): Promise<ApiResponse<{ isAuthenticated: boolean; user: User | null }>> {
-        return this.request<{ isAuthenticated: boolean; user: User | null }>('/api/auth/status');
-    }
+    // Authentication API - Updated to match backend routes
+    async getAuthStatus(token?: string): Promise<ApiResponse<{ authenticated: boolean; user: User | null }>> {
+        const headers: Record<string, string> = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
 
-    async connectWallet(email: string): Promise<ApiResponse<User>> {
-        return this.request<User>('/api/auth/connect', {
-            method: 'POST',
-            body: JSON.stringify({email, type: 'email'} as AuthConnectRequest),
+        return this.request<{ authenticated: boolean; user: User | null }>('/api/auth/status', {
+            headers,
         });
     }
 
-    async disconnectWallet(): Promise<ApiResponse<{ message: string }>> {
-        return this.request<{ message: string }>('/api/auth/disconnect', {
+    async authenticate(email: string): Promise<ApiResponse<{
+        user: User;
+        token: string;
+        smartAccountAddress?: string
+    }>> {
+        return this.request<{ user: User; token: string; smartAccountAddress?: string }>('/api/auth/authenticate', {
             method: 'POST',
+            body: JSON.stringify({email}),
         });
     }
 
-    // Account API
-    async createSmartAccount(): Promise<ApiResponse<{ address: Address }>> {
-        return this.request<{ address: Address }>('/api/accounts/create', {
+    async logout(token?: string): Promise<ApiResponse<{ message: string }>> {
+        const headers: Record<string, string> = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        return this.request<{ message: string }>('/api/auth/logout', {
             method: 'POST',
+            headers,
         });
     }
 
-    async getAccountInfo(address: Address): Promise<ApiResponse<SmartAccountInfo>> {
-        return this.request<SmartAccountInfo>(`/api/accounts/${address}`);
+    // Account API - Updated to match backend structure
+    async createSmartAccount(token: string): Promise<ApiResponse<{ account: SmartAccountInfo }>> {
+        return this.request<{ account: SmartAccountInfo }>('/api/accounts/create', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     }
 
-    // Transaction API
+    async getAccountByAddress(address: Address): Promise<ApiResponse<{ account: SmartAccountInfo }>> {
+        return this.request<{ account: SmartAccountInfo }>(`/api/accounts/${address}`);
+    }
+
+    async getUserAccounts(token: string): Promise<ApiResponse<{ accounts: SmartAccountInfo[] }>> {
+        return this.request<{ accounts: SmartAccountInfo[] }>('/api/accounts/me', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    }
+
+    // Transaction API - Updated to match backend structure
     async sendTransaction(
+        token: string,
         to: Address,
         data?: string,
         value?: bigint
-    ): Promise<ApiResponse<TransactionResult>> {
+    ): Promise<ApiResponse<{ transaction: TransactionResult }>> {
         const payload: TransactionRequest = {
             to,
             data: data || '0x',
             value: value ? value.toString() : '0',
         };
 
-        return this.request<TransactionResult>('/api/transactions/send', {
+        return this.request<{ transaction: TransactionResult }>('/api/transactions/send', {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
             body: JSON.stringify(payload),
         });
     }
 
-    async getTransactionStatus(hash: string): Promise<ApiResponse<{
-        hash: string;
-        status: 'pending' | 'success' | 'failed';
-        receipt?: any;
+    async getTransactionByHash(hash: string): Promise<ApiResponse<{ transaction: TransactionHistory }>> {
+        return this.request<{ transaction: TransactionHistory }>(`/api/transactions/${hash}`);
+    }
+
+    async getTransactionHistory(token: string, limit?: number): Promise<ApiResponse<{
+        transactions: TransactionHistory[];
+        count: number
     }>> {
-        return this.request(`/api/transactions/${hash}`);
+        const searchParams = new URLSearchParams();
+        if (limit) searchParams.append('limit', limit.toString());
+
+        const query = searchParams.toString();
+        return this.request<{
+            transactions: TransactionHistory[];
+            count: number
+        }>(`/api/transactions/history${query ? `?${query}` : ''}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     }
 
-    // Session Key API
-    async createSessionKey(
-        permissions: SessionPermission[],
-        expiresAt?: number
-    ): Promise<ApiResponse<SessionKey>> {
-        const payload = {
-            permissions,
-            expiresAt: expiresAt || Date.now() + 24 * 60 * 60 * 1000, // 24 hours default
+    async estimateGas(
+        to: Address,
+        data?: string,
+        value?: bigint
+    ): Promise<ApiResponse<{ gasEstimate: string; gasLimit: string; breakdown: any }>> {
+        const payload: TransactionRequest = {
+            to,
+            data: data || '0x',
+            value: value ? value.toString() : '0',
         };
 
-        return this.request<SessionKey>('/api/session/create', {
+        return this.request<{
+            gasEstimate: string;
+            gasLimit: string;
+            breakdown: any
+        }>('/api/transactions/estimate-gas', {
             method: 'POST',
             body: JSON.stringify(payload),
         });
     }
 
-    async getSessionKeys(): Promise<ApiResponse<SessionKey[]>> {
-        return this.request<SessionKey[]>('/api/session/list');
+    // TODO: Session Key API - To be implemented in future versions
+    // TODO: Recovery API - To be implemented in future versions
+
+    // Health check - Updated to match backend route
+    async getHealthCheck(): Promise<ApiResponse<{ healthy: boolean; timestamp: string; database: any; system: any }>> {
+        return this.request<{ healthy: boolean; timestamp: string; database: any; system: any }>('/api/health');
     }
 
-    async revokeSessionKey(sessionId: string): Promise<ApiResponse<{ message: string }>> {
-        return this.request<{ message: string }>(`/api/session/${sessionId}`, {
-            method: 'DELETE',
-        });
-    }
-
-    // Recovery API
-    async initiateRecovery(
-        accountAddress: Address,
-        guardians: Address[],
-        threshold: number
-    ): Promise<ApiResponse<RecoveryRequest>> {
-        const payload = {
-            accountAddress,
-            guardians,
-            threshold,
-        };
-
-        return this.request<RecoveryRequest>('/api/recovery/initiate', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-        });
-    }
-
-    async getRecoveryStatus(recoveryId: string): Promise<ApiResponse<RecoveryRequest>> {
-        return this.request<RecoveryRequest>(`/api/recovery/${recoveryId}/status`);
-    }
-
-    // Health check
-    async getHealthCheck(): Promise<ApiResponse<{ status: string; timestamp: string }>> {
-        return this.request<{ status: string; timestamp: string }>('/health');
+    // System stats
+    async getSystemStats(): Promise<ApiResponse<{ users: any; accounts: any; transactions: any; sessions: any }>> {
+        return this.request<{ users: any; accounts: any; transactions: any; sessions: any }>('/api/stats');
     }
 }
 
@@ -244,6 +303,8 @@ export type {
     User,
     SmartAccountInfo,
     TransactionResult,
+    TransactionHistory,
+    GasEstimate,
     SessionPermission,
     SessionKey,
     RecoveryRequest,

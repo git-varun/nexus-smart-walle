@@ -126,7 +126,7 @@ export const useRecovery = () => {
                 recThreshold
             );
 
-            if (response.success) {
+            if (response.success && response.data) {
                 toast({
                     title: 'Recovery Initiated',
                     description: `Recovery request ${response.data.id} has been created`,

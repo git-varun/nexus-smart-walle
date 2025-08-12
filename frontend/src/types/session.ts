@@ -1,4 +1,4 @@
-// frontend/src/types/session.ts
+// frontend/src/types/sessions.route.ts
 export interface SessionKey {
     key: string
     spendingLimit: string

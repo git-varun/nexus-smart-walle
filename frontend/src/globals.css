@@ -1,64 +1,166 @@
-/*frontend /src/ globals.css*/
+/* Nexus Smart Wallet - Modern Web3 UI */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Import our Web3 theme */
+@import './styles/web3-theme.css';
+
+/* Dark Mode First - Web3 Design System */
 :root {
+    /* Override with Web3 Dark Theme */
+    --background: 220 84% 3%; /* Deep space */
+    --foreground: 210 40% 98%; /* Clean white */
+    --card: 220 84% 5%; /* Card background */
+    --card-foreground: 210 40% 98%;
+    --popover: 220 84% 5%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 262 83% 58%; /* Neon purple */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 188 94% 43%; /* Neon cyan */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 217 11% 65%;
+    --accent: 158 64% 52%; /* Neon green */
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%; /* Neon red */
+    --destructive-foreground: 210 40% 98%;
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 262 83% 58%;
+    --radius: 1rem;
+}
+
+/* Light mode fallback (rarely used in Web3) */
+.light {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
+    --primary: 262 83% 58%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
     --muted: 210 40% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
+    --accent: 158 64% 52%;
     --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --ring: 262 83% 58%;
+    --radius: 1rem;
 }
 
-.dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
-}
-
+/* Base styles with Web3 enhancements */
 * {
     border-color: hsl(var(--border));
 }
 
-body {
-    color: hsl(var(--foreground));
-    background: hsl(var(--background));
+html {
+    scroll-behavior: smooth;
 }
 
-/* Progress animations */
+body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    color: hsl(var(--foreground));
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    min-height: 100vh;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Enhanced scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: hsl(220 84% 5%);
+}
+
+::-webkit-scrollbar-thumb {
+    background: hsl(215 28% 17%);
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: hsl(262 83% 58%);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+}
+
+/* Selection styling */
+::selection {
+    background: rgba(139, 92, 246, 0.3);
+    color: hsl(var(--foreground));
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+}
+
+/* Web3 Component Base Classes */
+@layer components {
+    .web3-card {
+        @apply bg-card/50 backdrop-blur-sm border border-border/50 rounded-web3 shadow-cyber;
+    }
+
+    .web3-button {
+        @apply inline-flex items-center justify-center rounded-web3 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+    }
+
+    .web3-button-primary {
+        @apply web3-button bg-primary text-primary-foreground hover:bg-primary/90 shadow-neon hover:shadow-neon;
+    }
+
+    .web3-button-secondary {
+        @apply web3-button bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-neon-cyan;
+    }
+
+    .web3-input {
+        @apply flex h-10 w-full rounded-web3 border border-input bg-background/50 backdrop-blur-sm px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    }
+
+    .web3-gradient-text {
+        @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+    }
+
+    .web3-glow {
+        @apply shadow-neon hover:shadow-neon transition-shadow duration-300;
+    }
+}
+
+/* Animation enhancements */
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 @keyframes slide-up {
     from {
         opacity: 0;
@@ -70,6 +172,88 @@ body {
     }
 }
 
+@keyframes glow {
+    0% {
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+    }
+}
+
+@keyframes pulse-neon {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(139, 92, 246, 0.8);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Utility classes */
+.animate-fade-in {
+    animation: fade-in 0.5s ease-out;
+}
+
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+}
+
 .animate-slide-up {
-    animation: slide-up 0.3s ease-out;
+    animation: slide-up 0.4s ease-out;
+}
+
+.animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+.animate-pulse-neon {
+    animation: pulse-neon 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-float {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Responsive design helpers */
+@media (max-width: 640px) {
+    body {
+        font-size: 14px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --primary: 270 95% 75%;
+        --secondary: 190 95% 60%;
+        --accent: 160 85% 65%;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .animate-glow,
+    .animate-pulse-neon,
+    .animate-float {
+        animation: none !important;
+    }
 }

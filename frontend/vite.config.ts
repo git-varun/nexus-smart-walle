@@ -13,7 +13,7 @@ export default defineConfig({
         global: 'globalThis',
     },
     server: {
-        port: 3000,
+        port: 3001,
         host: true,
     },
     build: {
