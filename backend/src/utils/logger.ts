@@ -1,5 +1,6 @@
 import {createWriteStream, existsSync, mkdirSync} from 'fs';
 import {join} from 'path';
+import {LogEntry} from '../types/infrastructure';
 
 export enum LogLevel {
     ERROR = 0,
@@ -7,17 +8,6 @@ export enum LogLevel {
     INFO = 2,
     DEBUG = 3,
     TRACE = 4
-}
-
-export interface LogEntry {
-    timestamp: string;
-    level: string;
-    service: string;
-    message: string;
-    data?: any;
-    error?: Error;
-    requestId?: string;
-    userId?: string;
 }
 
 export class Logger {

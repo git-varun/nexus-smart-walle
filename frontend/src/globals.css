@@ -4,8 +4,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import our Web3 theme */
-@import './styles/web3-theme.css';
+/* Web3 theme integrated directly */
 
 /* Dark Mode First - Web3 Design System */
 :root {

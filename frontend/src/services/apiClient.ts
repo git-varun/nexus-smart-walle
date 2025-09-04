@@ -11,10 +11,6 @@ interface ApiResponse<T = any> {
 }
 
 // Request/Response types
-interface AuthConnectRequest {
-    email: string;
-    type: 'email';
-}
 
 interface User {
     id: string;

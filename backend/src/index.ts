@@ -1,80 +1,71 @@
-import {createApp} from './app';
+import createApp from './app';
 import {config} from './config';
-import {createServiceLogger} from './utils/logger';
+import {createServiceLogger} from './utils';
+import {disconnectDatabase, initializeDatabase} from './database/init';
 
 const logger = createServiceLogger('Server');
 
 async function startServer() {
     try {
-        const PORT = config.port;
-        const NODE_ENV = config.nodeEnv;
+        const PORT = config.port || 3000;
 
+        // Initialize database
+        await initializeDatabase();
+
+        // Create and start app
         const app = await createApp();
 
         const server = app.listen(PORT, () => {
-            logger.info(`🚀 Nexus Smart Wallet Backend running on port ${PORT}`);
-            logger.info(`📊 Environment: ${NODE_ENV}`);
-            logger.info(`🔗 Base URL: http://localhost:${PORT}`);
-            logger.info(`🏥 Health Check: http://localhost:${PORT}/api/health`);
-
-            logger.info('📋 Available API Endpoints:');
-            logger.info('  Authentication:');
-            logger.info('    POST /api/auth/authenticate - Email authentication');
-            logger.info('    POST /api/auth/logout - User logout');
-            logger.info('    GET  /api/auth/status - Authentication status');
-
-            logger.info('  Accounts:');
-            logger.info('    POST /api/accounts/create - Create/get smart account');
-            logger.info('    GET  /api/accounts/me - Get user accounts (auth required)');
-            logger.info('    GET  /api/accounts/:address - Get account by address');
-
-            logger.info('  Transactions:');
-            logger.info('    POST /api/transactions/send - Send transaction (auth required)');
-            logger.info('    GET  /api/transactions/history - Get transaction history (auth required)');
-            logger.info('    GET  /api/transactions/:hash - Get transaction by hash');
-            logger.info('    POST /api/transactions/estimate-gas - Estimate transaction gas');
-
-            logger.info('  System:');
-            logger.info('    GET  /api/health - System health check');
-            logger.info('    GET  /api/stats - Database statistics');
-            logger.info('    GET  / - API documentation');
+            logger.info(`🚀 Server running on port ${PORT}`);
+            logger.info(`🔗 API: http://localhost:${PORT}`);
+            logger.info(`🏥 Health: http://localhost:${PORT}/health`);
+            logger.info(`📖 Docs: http://localhost:${PORT}/`);
         });
 
-        // Graceful shutdown handlers
-        const shutdown = () => {
-            logger.info('🔄 Received shutdown signal, closing server gracefully...');
-            server.close(() => {
-                logger.info('✅ Server closed successfully');
-                process.exit(0);
+        // Graceful shutdown
+        const shutdown = async () => {
+            logger.info('🔄 Shutting down gracefully...');
+
+            server.close(async () => {
+                try {
+                    await disconnectDatabase();
+                    logger.info('✅ Server stopped');
+                    process.exit(0);
+                } catch (error) {
+                    logger.error('❌ Shutdown error', error instanceof Error ? error : new Error(String(error)));
+                    process.exit(1);
+                }
             });
 
-            // Force close after 10 seconds
+            // Force exit after 5 seconds
             setTimeout(() => {
-                logger.error('❌ Forced server shutdown after 10 seconds');
+                logger.error('❌ Forced shutdown');
                 process.exit(1);
-            }, 10000);
+            }, 5000);
         };
 
+        // Shutdown handlers
         process.on('SIGTERM', shutdown);
         process.on('SIGINT', shutdown);
 
-        // Handle uncaught exceptions
+        // Error handlers
         process.on('uncaughtException', (error) => {
             logger.error('💥 Uncaught Exception', error);
             process.exit(1);
         });
 
-        process.on('unhandledRejection', (reason, promise) => {
-            logger.error('💥 Unhandled Rejection at Promise', reason instanceof Error ? reason : new Error(String(reason)));
+        process.on('unhandledRejection', (reason) => {
+            logger.error('💥 Unhandled Rejection', reason instanceof Error ? reason : new Error(String(reason)));
             process.exit(1);
         });
 
     } catch (error) {
-        logger.error('❌ Failed to start server', error as Error);
+        logger.error('❌ Failed to start server', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
     }
 }
 
+// Start server if this is the main module
 if (require.main === module) {
     startServer();
 }

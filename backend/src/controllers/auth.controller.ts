@@ -1,139 +1,228 @@
-import {NextFunction, Request, Response} from 'express';
-import {AuthService} from '../services/AuthService';
-import {createServiceLogger} from '../utils/logger';
+import {Request, Response} from 'express';
+import {
+    comparePassword,
+    generateToken,
+    getAuthStatus,
+    hashPassword,
+    logoutUser,
+    validatePasswordStrength
+} from '../services/auth.service';
+import {createServiceLogger, validateEmail} from '../utils';
+import * as UserRepository from '../repositories/userRepository';
 
 const logger = createServiceLogger('AuthController');
 
-// Initialize service (no dependency injection needed - uses centralized config)
-const authService = new AuthService();
-
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+// Register new user with email and password
+export const register = async (req: Request, res: Response): Promise<void> => {
     try {
-        const {email} = req.body;
+        const {email, password} = req.body;
 
-        if (!email) {
-            return res.status(400).json({
+        // Validate input
+        if (!email || !password) {
+            res.status(400).json({
                 success: false,
-                error: 'Email is required'
+                error: {
+                    code: 'MISSING_FIELDS',
+                    message: 'Email and password are required'
+                }
             });
+            return;
         }
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return res.status(400).json({
+        // Validate email format
+        if (!validateEmail(email)) {
+            res.status(400).json({
                 success: false,
-                error: 'Invalid email format'
+                error: {
+                    code: 'INVALID_EMAIL',
+                    message: 'Invalid email format'
+                }
             });
+            return;
         }
 
-        logger.info('Authentication request', {email});
+        // Validate password strength
+        const passwordValidation = validatePasswordStrength(password);
+        if (!passwordValidation.isValid) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'WEAK_PASSWORD',
+                    message: passwordValidation.message
+                }
+            });
+            return;
+        }
 
-        const result = await authService.authenticate(email);
+        // Check if user already exists
+        const existingUser = await UserRepository.findByEmail(email);
+        if (existingUser) {
+            res.status(409).json({
+                success: false,
+                error: {
+                    code: 'USER_ALREADY_EXISTS',
+                    message: 'User with this email already exists'
+                }
+            });
+            return;
+        }
 
-        if (result.success) {
-            res.json({
+        // Hash password before storing
+        const hashedPassword = await hashPassword(password);
+
+        // Create new user with hashed password
+        const newUser = await UserRepository.create({
+            email,
+            password: hashedPassword
+        });
+
+        logger.info('User registration successful', {
+            userId: newUser.id,
+            email: newUser.email
+        });
+
+        res.status(201).json({
+            success: true,
+            data: {
+                user: {
+                    id: newUser.id,
+                    email: newUser.email,
+                    createdAt: newUser.createdAt
+                }
+            }
+        });
+
+    } catch (error) {
+        logger.error('User registration failed', error instanceof Error ? error : new Error(String(error)));
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Registration failed'
+            }
+        });
+    }
+};
+
+// Authenticate user using centralized wallet system
+export const login = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const {email, password} = req.body;
+
+        const user = await (UserRepository as any).findByEmailWithPassword(email);
+        // Validate input
+        if (!user) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'INVALID_CREDENTIALS',
+                    message: 'user does not exist',
+                }
+            });
+            return;
+        }
+
+        // Validate password
+        const isValidPassword = await comparePassword(password, user.password || '');
+
+        if (isValidPassword) {
+            // Generate JWT token
+            const token = generateToken(user.id, user.email);
+
+            // Update last login
+            await UserRepository.updateLastLogin(user.id);
+
+            res.status(200).json({
                 success: true,
                 data: {
-                    user: result.user,
-                    token: result.token,
-                    smartAccountAddress: result.smartAccountAddress
+                    user: {
+                        id: user.id,
+                        email: user.email,
+                        createdAt: user.createdAt,
+                        lastLogin: user.lastLogin
+                    },
+                    token
                 }
             });
         } else {
             res.status(401).json({
                 success: false,
-                error: result.error
+                error: {
+                    code: 'INVALID_CREDENTIALS',
+                    message: 'Invalid email or password'
+                }
             });
         }
+
     } catch (error) {
-        logger.error('Authentication controller error', error instanceof Error ? error : new Error(String(error)));
-        next(error);
+        logger.error('Centralized wallet authentication failed', error instanceof Error ? error : new Error(String(error)));
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Authentication failed'
+            }
+        });
     }
 };
 
-export const logout = async (req: Request, res: Response, next: NextFunction) => {
+// Logout user (JWT is stateless - client should delete token)
+export const logout = async (req: Request, res: Response): Promise<void> => {
     try {
-        const token = req.headers.authorization?.replace('Bearer ', '');
+        const result = logoutUser();
+
+        res.status(200).json({
+            success: true,
+            message: 'Logged out successfully. Please delete the token from client storage.'
+        });
+
+    } catch (error) {
+        logger.error('Logout failed', error instanceof Error ? error : new Error(String(error)));
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Logout failed'
+            }
+        });
+    }
+};
+
+// Get authentication status
+export const getStatus = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const authHeader = req.headers.authorization;
+        const token = authHeader && authHeader.split(' ')[1];
 
         if (!token) {
-            return res.status(400).json({
-                success: false,
-                error: 'Authorization token is required'
-            });
-        }
-
-        logger.info('Logout request', {hasToken: !!token});
-
-        const result = await authService.logout(token);
-
-        if (result.success) {
-            res.json({
+            res.status(200).json({
                 success: true,
-                message: 'Logged out successfully'
+                data: {
+                    authenticated: false
+                }
             });
-        } else {
-            res.status(500).json({
-                success: false,
-                error: result.error
-            });
+            return;
         }
-    } catch (error) {
-        logger.error('Logout controller error', error instanceof Error ? error : new Error(String(error)));
-        next(error);
-    }
-};
 
-export const getStatus = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const token = req.headers.authorization?.replace('Bearer ', '');
+        const result = await getAuthStatus(token);
 
-        logger.info('Get status request', {hasToken: !!token});
-
-        const result = await authService.getAuthStatus(token);
-
-        res.json({
-            success: result.success,
+        res.status(200).json({
+            success: true,
             data: {
                 authenticated: result.authenticated,
                 user: result.user,
-                alchemyConnected: result.alchemyStatus
-            },
-            error: result.error
+                smartAccountAddress: result.smartAccountAddress
+            }
         });
+
     } catch (error) {
-        logger.error('Get status controller error', error instanceof Error ? error : new Error(String(error)));
-        next(error);
-    }
-};
-
-// Middleware to validate authentication
-export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const token = req.headers.authorization?.replace('Bearer ', '');
-
-        if (!token) {
-            return res.status(401).json({
-                success: false,
-                error: 'Authorization token is required'
-            });
-        }
-
-        const result = await authService.validateSession(token);
-
-        if (!result.success) {
-            return res.status(401).json({
-                success: false,
-                error: result.error || 'Invalid or expired session'
-            });
-        }
-
-        // Add user to request object for downstream use
-        (req as any).user = result.user;
-        next();
-    } catch (error) {
-        logger.error('Auth middleware error', error instanceof Error ? error : new Error(String(error)));
+        logger.error('Get auth status failed', error instanceof Error ? error : new Error(String(error)));
         res.status(500).json({
             success: false,
-            error: 'Authentication middleware error'
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Failed to get authentication status'
+            }
         });
     }
 };

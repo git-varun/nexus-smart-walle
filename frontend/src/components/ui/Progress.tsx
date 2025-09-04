@@ -85,7 +85,7 @@ export const Progress: React.FC<ProgressProps> = ({
         }
     };
 
-    const getStepLineColor = (step: ProgressStep, nextStep?: ProgressStep) => {
+    const getStepLineColor = (step: ProgressStep, _nextStep?: ProgressStep) => {
         if (step.status === 'completed') return 'bg-green-500';
         if (step.status === 'loading') return 'bg-blue-500';
         if (step.status === 'error') return 'bg-red-500';

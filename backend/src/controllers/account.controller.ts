@@ -1,119 +1,180 @@
-import {NextFunction, Request, Response} from 'express';
-import {AccountService} from '../services/AccountService';
-import {createServiceLogger} from '../utils/logger';
+import {Response} from 'express';
+import {AuthenticatedRequest, getUserId} from '../middleware';
+import {getAccountDetails, getOrCreateUserAccount, getUserAccountInfo} from '../services/account.service';
+import {createServiceLogger} from '../utils';
 
 const logger = createServiceLogger('AccountController');
 
-// Initialize services (no dependency injection needed - uses centralized config)
-const accountService = new AccountService();
-
-export const createAccount = async (req: Request, res: Response, next: NextFunction) => {
+export async function createOrGetSmartAccount(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-        // User should be available from auth middleware
-        const user = (req as any).user;
-        if (!user) {
-            return res.status(401).json({
+        const userId = getUserId(req);
+        if (!userId) {
+            res.status(401).json({
                 success: false,
-                error: 'User not authenticated'
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'User authentication required'
+                }
+            });
+            return;
+        }
+
+        const {chainId} = req.body;
+
+        if (!chainId) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'MISSING_CHAIN_ID',
+                    message: 'Chain ID is required'
+                }
+            });
+            return;
+        }
+
+        const result = await getOrCreateUserAccount(userId, chainId);
+
+        if (result.success) {
+            res.status(201).json({
+                success: true,
+                data: {
+                    smartAccount: result.account
+                }
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'SMART_ACCOUNT_CREATION_FAILED',
+                    message: result.error
+                }
             });
         }
 
-        logger.info('Create account request', {userId: user.id, email: user.email});
+    } catch (error) {
+        logger.error('Create or get smart account failed', error instanceof Error ? error : new Error(String(error)));
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Failed to create or get smart account'
+            }
+        });
+    }
+}
 
-        const result = await accountService.createOrGetSmartAccount(user.id, user.email);
+export async function getMySmartAccounts(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+        const userId = getUserId(req);
+        if (!userId) {
+            res.status(401).json({
+                success: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'User authentication required'
+                }
+            });
+            return;
+        }
+
+        const {chainId} = req.query;
+
+        if (!chainId) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'MISSING_CHAIN_ID',
+                    message: 'Chain ID is required as query parameter'
+                }
+            });
+            return;
+        }
+
+        const result = await getUserAccountInfo(userId, parseInt(chainId as string));
 
         if (result.success) {
-            res.json({
+            res.status(200).json({
                 success: true,
                 data: {
                     account: result.account
                 }
             });
         } else {
-            res.status(500).json({
+            res.status(400).json({
                 success: false,
-                error: result.error
+                error: {
+                    code: 'GET_ACCOUNT_FAILED',
+                    message: result.error
+                }
             });
         }
-    } catch (error) {
-        logger.error('Create account controller error', error instanceof Error ? error : new Error(String(error)));
-        next(error);
-    }
-};
 
-export const getAccountByAddress = async (req: Request, res: Response, next: NextFunction) => {
+    } catch (error) {
+        logger.error('Get my smart account failed', error instanceof Error ? error : new Error(String(error)));
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Failed to get smart account'
+            }
+        });
+    }
+}
+
+export async function getSmartAccountDetails(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
         const {address} = req.params;
+        const {chainId} = req.query;
 
         if (!address) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
-                error: 'Account address is required'
+                error: {
+                    code: 'MISSING_ADDRESS',
+                    message: 'Smart account address is required'
+                }
             });
+            return;
         }
 
-        // Validate address format (basic check)
-        if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-            return res.status(400).json({
+        if (!chainId) {
+            res.status(400).json({
                 success: false,
-                error: 'Invalid address format'
+                error: {
+                    code: 'MISSING_CHAIN_ID',
+                    message: 'Chain ID is required as query parameter'
+                }
             });
+            return;
         }
 
-        logger.info('Get account by address request', {address});
-
-        const result = await accountService.getAccountByAddress(address);
+        const result = await getAccountDetails(address, parseInt(chainId as string));
 
         if (result.success) {
-            res.json({
+            res.status(200).json({
                 success: true,
                 data: {
                     account: result.account
                 }
             });
         } else {
-            const statusCode = result.error === 'Account not found' ? 404 : 500;
-            res.status(statusCode).json({
+            res.status(404).json({
                 success: false,
-                error: result.error
-            });
-        }
-    } catch (error) {
-        logger.error('Get account by address controller error', error instanceof Error ? error : new Error(String(error)));
-        next(error);
-    }
-};
-
-export const getUserAccounts = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        // User should be available from auth middleware
-        const user = (req as any).user;
-        if (!user) {
-            return res.status(401).json({
-                success: false,
-                error: 'User not authenticated'
-            });
-        }
-
-        logger.info('Get user accounts request', {userId: user.id, email: user.email});
-
-        const result = await accountService.getUserAccounts(user.id);
-
-        if (result.success) {
-            res.json({
-                success: true,
-                data: {
-                    accounts: result.accounts
+                error: {
+                    code: 'ACCOUNT_NOT_FOUND',
+                    message: result.error
                 }
             });
-        } else {
-            res.status(500).json({
-                success: false,
-                error: result.error
-            });
         }
+
     } catch (error) {
-        logger.error('Get user accounts controller error', error instanceof Error ? error : new Error(String(error)));
-        next(error);
+        logger.error('Get smart account details failed', error instanceof Error ? error : new Error(String(error)));
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Failed to get smart account details'
+            }
+        });
     }
-};
+}

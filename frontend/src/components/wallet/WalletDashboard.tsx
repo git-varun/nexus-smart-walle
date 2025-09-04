@@ -2,9 +2,7 @@ import React, {useState} from 'react';
 import {useUnifiedWallet} from '../../hooks/useUnifiedWallet';
 import {useBackendSmartAccount} from '../../hooks/useBackendSmartAccount';
 import {useSessionKeys} from '../../hooks/useSessionKeys';
-import {useRecovery} from '../../hooks/useRecovery';
 import {useTransactionHistoryBackend} from '../../hooks/useTransactionHistoryBackend';
-import {useMetaMaskTransactions} from '../../hooks/useMetaMaskTransactions';
 import {Card} from '../ui/Card';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';
@@ -18,13 +16,11 @@ export const WalletDashboard: React.FC = () => {
         userAddress,
         userInfo,
         balance,
-        emailBalance,
         disconnect
     } = useUnifiedWallet();
 
     const {
         token: authToken,
-        isAuthenticated: backendAuthenticated
     } = useBackendSmartAccount();
 
     const {
@@ -38,16 +34,7 @@ export const WalletDashboard: React.FC = () => {
         totalSessionKeys
     } = useSessionKeys();
 
-    const {
-        initiateRecovery,
-        isLoading: recoveryLoading,
-        recoveryConfig,
-        pendingRecovery,
-        setupRecovery,
-        approveRecovery,
-        executeRecovery,
-        cancelRecovery
-    } = useRecovery();
+    // Recovery functionality temporarily disabled
 
     const {
         sendTransaction: sendTransactionBackend,
@@ -63,13 +50,11 @@ export const WalletDashboard: React.FC = () => {
         failedTransactions
     } = useTransactionHistoryBackend();
 
-    const {
-        sendMetaMaskTransaction,
-        isLoading: metaMaskTxLoading,
-        lastTxHash: metaMaskTxHash,
-        receipt: metaMaskReceipt,
-        sendError: metaMaskError
-    } = useMetaMaskTransactions();
+    // MetaMask transactions temporarily disabled
+    const sendMetaMaskTransaction = async () => {
+        throw new Error('MetaMask transactions not available');
+    };
+    const metaMaskTxLoading = false;
 
     // Transaction form state
     const [txTo, setTxTo] = useState('');
@@ -80,8 +65,6 @@ export const WalletDashboard: React.FC = () => {
     // Session key form state
     const [sessionSpendingLimit, setSessionSpendingLimit] = useState('0.1');
 
-    // Recovery form state
-    const [recoveryNewOwner, setRecoveryNewOwner] = useState('');
 
     if (!isConnected) {
         return (
@@ -171,55 +154,6 @@ export const WalletDashboard: React.FC = () => {
         }
     };
 
-    const handleSetupRecovery = async () => {
-        if (!userAddress) return;
-
-        try {
-            // Setup with default guardians and 2/2 threshold
-            const defaultGuardians = [
-                '0x742A4A0BfF7C58e3b52F6c51ede22f7B8F4CAb0E',
-                '0x8F4CAb0E742A4A0BfF7C58e3b52F6c51ede22f7B'
-            ];
-            await setupRecovery(defaultGuardians, 1, 48 * 3600); // 48 hours delay
-        } catch (err) {
-            console.error('Recovery setup failed:', err);
-        }
-    };
-
-    const handleInitiateRecovery = async () => {
-        if (!recoveryNewOwner.trim()) return;
-
-        try {
-            await initiateRecovery(recoveryNewOwner);
-            setRecoveryNewOwner('');
-        } catch (err) {
-            console.error('Recovery initiation failed:', err);
-        }
-    };
-
-    const handleApproveRecovery = async () => {
-        try {
-            await approveRecovery();
-        } catch (err) {
-            console.error('Recovery approval failed:', err);
-        }
-    };
-
-    const handleExecuteRecovery = async () => {
-        try {
-            await executeRecovery();
-        } catch (err) {
-            console.error('Recovery execution failed:', err);
-        }
-    };
-
-    const handleCancelRecovery = async () => {
-        try {
-            await cancelRecovery();
-        } catch (err) {
-            console.error('Recovery cancellation failed:', err);
-        }
-    };
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
@@ -291,7 +225,7 @@ export const WalletDashboard: React.FC = () => {
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-sm text-blue-800">
                             💡 <strong>MetaMask Mode:</strong> You're connected with MetaMask.
-                            Some advanced features like session keys and recovery are only available with email wallets.
+                            Some advanced features like session keys are only available with email wallets.
                         </p>
                     </div>
                 )}
@@ -300,7 +234,7 @@ export const WalletDashboard: React.FC = () => {
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-sm text-green-800">
                             ✨ <strong>Smart Account Mode:</strong> You're using an ERC-4337 smart account with
-                            gasless transactions, session keys, and recovery features powered by our backend API.
+                            gasless transactions and session keys powered by our backend API.
                         </p>
                     </div>
                 )}
@@ -767,193 +701,6 @@ export const WalletDashboard: React.FC = () => {
                 </Card>
             )}
 
-            {/* Recovery - Only for email wallets */}
-            {walletType === 'email' && (
-                <Card className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold">Account Recovery</h2>
-                        <div className="flex items-center space-x-2">
-                            {recoveryConfig?.isActive ? (
-                                <div
-                                    className="flex items-center space-x-1 text-green-600 bg-green-50 px-2 py-1 rounded-full text-xs">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span>Recovery Enabled</span>
-                                </div>
-                            ) : (
-                                <div
-                                    className="flex items-center space-x-1 text-gray-600 bg-gray-50 px-2 py-1 rounded-full text-xs">
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                                    <span>Recovery Not Setup</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Recovery Configuration */}
-                    {!recoveryConfig?.isActive ? (
-                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                            <h3 className="font-medium mb-2 text-blue-800">Setup Account Recovery</h3>
-                            <p className="text-sm text-blue-600 mb-3">
-                                Enable account recovery to protect your smart account from key loss
-                            </p>
-                            <div className="space-y-3">
-                                <div className="text-sm">
-                                    <p className="font-medium text-gray-700 mb-2">Default Configuration:</p>
-                                    <ul className="space-y-1 text-gray-600 text-xs">
-                                        <li>• Guardian 1: 0x742A...Cab0E (Trusted Address)</li>
-                                        <li>• Guardian 2: 0x8F4C...f7B (Backup Address)</li>
-                                        <li>• Threshold: 1 of 2 guardians needed</li>
-                                        <li>• Recovery delay: 48 hours</li>
-                                    </ul>
-                                </div>
-                                <Button
-                                    onClick={handleSetupRecovery}
-                                    disabled={recoveryLoading}
-                                    loading={recoveryLoading}
-                                    className="w-full"
-                                >
-                                    Setup Recovery Protection
-                                </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <h3 className="font-medium mb-2 text-green-800">Recovery Configuration</h3>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <p className="text-gray-600">Guardians:</p>
-                                    <div className="space-y-1 mt-1">
-                                        {recoveryConfig.guardians.map((guardian, index) => (
-                                            <p key={guardian}
-                                               className="font-mono text-xs bg-white px-2 py-1 rounded border">
-                                                {guardian.slice(0, 12)}...{guardian.slice(-4)}
-                                            </p>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <div>
-                                        <p className="text-gray-600">Threshold:</p>
-                                        <p className="font-medium">{recoveryConfig.threshold} of {recoveryConfig.guardians.length}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-600">Recovery Delay:</p>
-                                        <p className="font-medium">{recoveryConfig.delay / 3600} hours</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Pending Recovery */}
-                    {pendingRecovery && (
-                        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <div className="flex items-center space-x-2 mb-3">
-                                <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
-                                <h3 className="font-medium text-yellow-800">Recovery in Progress</h3>
-                            </div>
-                            <div className="space-y-3 text-sm">
-                                <div>
-                                    <p className="text-gray-600">New Owner:</p>
-                                    <p className="font-mono text-xs bg-white px-2 py-1 rounded border">
-                                        {pendingRecovery.newOwner}
-                                    </p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-gray-600">Execute After:</p>
-                                        <p className="font-medium">
-                                            {new Date(pendingRecovery.executeAfter).toLocaleString()}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-gray-600">Approvals:</p>
-                                        <p className="font-medium">
-                                            {pendingRecovery.approvedBy.length} of {recoveryConfig?.threshold || 1}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex space-x-2 pt-2">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={handleApproveRecovery}
-                                        disabled={recoveryLoading}
-                                        className="text-green-600 border-green-300"
-                                    >
-                                        Approve
-                                    </Button>
-                                    {Date.now() > pendingRecovery.executeAfter && (
-                                        <Button
-                                            size="sm"
-                                            onClick={handleExecuteRecovery}
-                                            disabled={recoveryLoading}
-                                            loading={recoveryLoading}
-                                        >
-                                            Execute Recovery
-                                        </Button>
-                                    )}
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={handleCancelRecovery}
-                                        disabled={recoveryLoading}
-                                        className="text-red-600 border-red-300"
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Initiate New Recovery */}
-                    {recoveryConfig?.isActive && !pendingRecovery && (
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-2">New Owner Address</label>
-                                <Input
-                                    placeholder="0x... (Enter the new address that should own this account)"
-                                    value={recoveryNewOwner}
-                                    onChange={(e) => setRecoveryNewOwner(e.target.value)}
-                                />
-                            </div>
-                            <Button
-                                onClick={handleInitiateRecovery}
-                                disabled={!recoveryNewOwner.trim() || recoveryLoading}
-                                loading={recoveryLoading}
-                                className="w-full"
-                            >
-                                Initiate Recovery Process
-                            </Button>
-                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-xs text-red-700 mb-1">
-                                    <strong>⚠️ Important:</strong> Recovery will transfer ownership to the new address
-                                    after the delay period.
-                                </p>
-                                <p className="text-xs text-red-600">
-                                    Only initiate recovery if you have lost access to your current account and the new
-                                    address is secure.
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Recovery Info */}
-                    <div className="mt-4 p-3 bg-gray-50 border rounded-lg">
-                        <p className="text-xs text-gray-600 mb-2">
-                            <strong>About Account Recovery:</strong> Recovery allows you to regain access to your smart
-                            account
-                            if you lose your private key. Guardians can approve recovery requests after a time delay.
-                        </p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                            <span>✓ Guardian approval required</span>
-                            <span>✓ Time delay protection</span>
-                            <span>✓ Cancellable anytime</span>
-                        </div>
-                    </div>
-                </Card>
-            )}
         </div>
     );
 };

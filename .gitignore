@@ -34,6 +34,8 @@ lerna-debug.log*
 # IDE
 .vscode/
 .idea/
+.claude/
+.serena/
 *.swp
 *.swo
 *~

@@ -1,102 +1,62 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import {config, getConfigSummary, validateConfig} from './config';
-import {errorHandler} from './middleware/errorHandler';
+import {validateConfig} from './config';
+import {errorHandlerMiddleware} from './middleware/errorHandler.middleware';
 import {routes} from './routes';
-// Database initialization is handled by repositories automatically
-import {createServiceLogger} from './utils/logger';
+import {createServiceLogger} from './utils';
 
 const logger = createServiceLogger('App');
 
-export async function createApp() {
+async function createApp() {
     const app = express();
 
     // Validate configuration
-    try {
-        validateConfig();
-        logger.info('Configuration validated successfully');
-    } catch (error) {
-        logger.error('Configuration validation failed', error instanceof Error ? error : new Error(String(error)));
-        throw error;
-    }
+    validateConfig();
+    logger.info('✅ Configuration validated');
 
-    // Database is automatically initialized by repositories when needed
-
-    logger.info('Initializing Nexus Smart Wallet Backend', getConfigSummary());
-
-    // Security middleware
+    // Basic security headers
     app.use(helmet({
         crossOriginEmbedderPolicy: false,
-        contentSecurityPolicy: {
-            directives: {
-                defaultSrc: ["'self'"],
-                styleSrc: ["'self'", "'unsafe-inline'"],
-                scriptSrc: ["'self'"],
-                imgSrc: ["'self'", "data:", "https:"],
-            },
-        },
+        contentSecurityPolicy: false // Simplified for POC
     }));
 
-    // CORS configuration
-    const corsOptions = {
-        origin: config.corsOrigins,
+    // CORS - Allow all origins for POC
+    app.use(cors({
+        origin: true,
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-        preflightContinue: false,
-        optionsSuccessStatus: 204
-    };
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+    }));
 
-    app.use(cors(corsOptions));
-
-    // Body parsing middleware
-    app.use(express.json({limit: '10mb'}));
+    // Body parsing
+    app.use(express.json());
     app.use(express.urlencoded({extended: true}));
 
-    // Request logging middleware (development only)
-    if (config.nodeEnv !== 'production') {
-        app.use((req, res, next) => {
-            logger.info(`${req.method} ${req.path}`, {
-                ip: req.ip,
-                userAgent: req.get('User-Agent'),
-                hasAuth: !!req.headers.authorization
-            });
-            next();
-        });
-    }
+    // Simple request logging
+    app.use((req, res, next) => {
+        logger.info(`${req.method} ${req.path}`);
+        next();
+    });
+
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+        res.json({status: 'ok', timestamp: new Date().toISOString()});
+    });
 
     // API routes
     app.use('/api', routes);
 
-    // Root endpoint
+    // Root endpoint - Simple API info
     app.get('/', (req, res) => {
         res.json({
-            name: 'Nexus Smart Wallet Backend',
+            name: 'Nexus Smart Wallet API',
             version: '1.0.0',
-            architecture: 'MVC with Repository Pattern',
             status: 'running',
-            endpoints: {
-                auth: {
-                    authenticate: 'POST /api/auth/authenticate',
-                    logout: 'POST /api/auth/logout',
-                    status: 'GET /api/auth/status'
-                },
-                accounts: {
-                    create: 'POST /api/accounts/create',
-                    getUserAccounts: 'GET /api/accounts/me',
-                    getByAddress: 'GET /api/accounts/:address'
-                },
-                transactions: {
-                    send: 'POST /api/transactions/send',
-                    history: 'GET /api/transactions/history',
-                    getByHash: 'GET /api/transactions/:hash',
-                    estimateGas: 'POST /api/transactions/estimate-gas'
-                },
-                system: {
-                    health: 'GET /api/health',
-                    stats: 'GET /api/stats'
-                }
+            docs: {
+                auth: 'POST /api/auth/authenticate',
+                accounts: 'POST /api/accounts/create | GET /api/accounts/me',
+                transactions: 'POST /api/transactions/send | GET /api/transactions/history',
+                health: 'GET /health'
             }
         });
     });
@@ -104,17 +64,15 @@ export async function createApp() {
     // 404 handler
     app.use('*', (req, res) => {
         res.status(404).json({
-            success: false,
-            error: 'Endpoint not found',
-            path: req.originalUrl,
-            method: req.method
+            error: 'Not Found',
+            path: req.originalUrl
         });
     });
 
-    // Error handling middleware (must be last)
-    app.use(errorHandler);
+    // Error handler (must be last)
+    app.use(errorHandlerMiddleware);
 
-    logger.info('Nexus Smart Wallet Backend initialized successfully');
+    logger.info('🚀 Nexus Smart Wallet API ready');
     return app;
 }
 

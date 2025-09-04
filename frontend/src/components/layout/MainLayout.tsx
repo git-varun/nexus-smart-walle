@@ -2,13 +2,12 @@
 import React from 'react';
 import {WalletTypeSelector} from '../wallet/WalletTypeSelector';
 import {WalletDashboard} from '../wallet/WalletDashboard';
-import {HealthStatusIcon} from '../health/HealthStatusIcon';
 import {useBackendSmartAccount} from '@/hooks/useBackendSmartAccount.ts';
 import {useAccount} from 'wagmi';
 import {useHealthMonitor} from '../../hooks/useHealthMonitor';
 
 export const MainLayout: React.FC = () => {
-    const {isAuthenticated, smartAccountAddress} = useBackendSmartAccount();
+    const {isAuthenticated} = useBackendSmartAccount();
     const {isConnected} = useAccount();
     const {health, refresh} = useHealthMonitor();
 
@@ -50,8 +49,16 @@ export const MainLayout: React.FC = () => {
                 </main>
             </div>
 
-            {/* Health Status Icon */}
-            <HealthStatusIcon health={health} onRefresh={refresh}/>
+            {/* Health Status Display */}
+            <div className="fixed bottom-4 right-4">
+                <div className={`px-3 py-2 rounded-full text-xs font-medium ${
+                    health.overall === 'healthy' ? 'bg-green-500 text-white' :
+                        health.overall === 'degraded' ? 'bg-yellow-500 text-black' :
+                            'bg-red-500 text-white'
+                }`}>
+                    {health.overall}
+                </div>
+            </div>
         </div>
     );
 };

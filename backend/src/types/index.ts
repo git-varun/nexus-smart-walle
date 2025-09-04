@@ -1,99 +1,73 @@
-import {Address, Hash, Hex} from 'viem';
+// ============================================================================
+// SIMPLIFIED TYPES EXPORT
+// ============================================================================
 
-export interface SmartAccountInfo {
-    address: Address;
-    isDeployed: boolean;
-    nonce: bigint;
-    balance?: bigint;
-}
+// Domain types (core business entities)
+export type {
+    // User types
+    User,
+    CreateUserInput,
+    UpdateUserInput,
 
-export interface TransactionRequest {
-    to: Address;
-    data?: Hex;
-    value?: bigint;
-}
+    // Smart Account types
+    SmartAccount,
+    CreateSmartAccountInput,
+    UpdateSmartAccountInput,
 
-export interface TransactionResult {
-    hash: Hash;
-    userOpHash?: Hash;
-    success: boolean;
-    receipt?: any;
-}
+    // Transaction types
+    Transaction,
+    TransactionStatus,
+    CreateTransactionInput,
+    UpdateTransactionInput,
 
-export interface User {
-    email?: string;
-    userId?: string;
-}
+    // Session types
+    Session,
+    CreateSessionInput
+} from './domain';
 
-export interface SessionKey {
-    id: string;
-    publicKey: string;
-    permissions: string[];
-    expiresAt: Date;
-    isActive: boolean;
-    ownerAddress: string;
-    email?: string;
-}
+// API & Service types (authentication, services, middleware)
+export type {
+    // Authentication types
+    AuthResult,
+    SessionValidationResult,
+    AuthStatusResult,
+    AuthenticateUserParams,
 
-export interface RecoveryRequest {
-    id: string;
-    accountAddress: Address;
-    guardians: Address[];
-    threshold: number;
-    status: 'pending' | 'approved' | 'rejected';
-    createdAt: Date;
-}
+    // Middleware types
+    AuthenticatedRequest,
+    ApiError,
 
-export interface AlchemyServiceConfig {
-    apiKey: string;
-    policyId?: string;
-    chainId: number;
-    enableGasManager?: boolean;
-}
+    // Service result types
+    SmartAccountResult,
+    CreateSmartAccountParams,
+    TransactionRequest,
+    TransactionInfo,
+    TransactionResult,
+    TransactionHistoryResult,
+    GasEstimate,
+    GasEstimationResult,
 
-export interface TransactionHistory {
-    id: string;
-    hash: Hash;
-    userOpHash?: Hash;
-    from: Address;
-    to: Address;
-    value: string;
-    data?: string;
-    status: 'pending' | 'success' | 'failed';
-    timestamp: number;
-    gasUsed?: string;
-    blockNumber?: number;
-    receipt?: any;
-}
+    // Alchemy service types
+    AlchemyConfig,
+    AlchemySmartAccount,
+    AlchemyTransaction,
+    AlchemyTransactionResult,
+    AlchemyUser,
+    UserOperation,
+    AlchemyServiceInstance,
+    AAVersion
+} from './api';
 
-export interface AuthSession {
-    id: string;
-    userId: string;
-    email?: string;
-    eoaAddress?: Address;
-    smartAccountAddress?: Address;
-    ownerAddress?: Address;
-    isAuthenticated: boolean;
-    createdAt: Date;
-    lastActiveAt: Date;
-    expiresAt: Date;
-}
+// Infrastructure types (database, logging, config)
+export type {
+    // Database document types
+    UserDocument,
+    SmartAccountDocument,
+    TransactionDocument,
+    SessionDocument,
+    ConnectionOptions,
 
-export interface AuthenticationParams {
-    type: 'email' | 'eoa';
-    email?: string;
-    eoaAddress?: Address;
-    signature?: string;
-}
-
-export interface GuardianApproval {
-    guardianAddress: Address;
-    signature: string;
-    timestamp: number;
-}
-
-export interface ExtendedRecoveryRequest extends RecoveryRequest {
-    approvals: GuardianApproval[];
-    newOwner?: Address;
-    expiresAt: Date;
-}
+    // Utility types
+    LogEntry,
+    Config
+} from './infrastructure';

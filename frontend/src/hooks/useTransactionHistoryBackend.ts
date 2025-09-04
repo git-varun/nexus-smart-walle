@@ -148,7 +148,7 @@ export function useTransactionHistoryBackend() {
     }, [transactions, checkTransactionStatus]);
 
     // Retry a failed transaction (placeholder - backend doesn't support retry yet)
-    const retryTransaction = useCallback(async (transactionId: string): Promise<TransactionResult | null> => {
+    const retryTransaction = useCallback(async (_transactionId: string): Promise<TransactionResult | null> => {
         toast({
             title: 'Feature Not Available',
             description: 'Transaction retry is not implemented yet.',

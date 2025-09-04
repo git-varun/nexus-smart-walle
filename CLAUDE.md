@@ -38,27 +38,27 @@ nexus-smart-wallet/
 
 ```bash
 cd frontend
-npm run dev          # Start development server (http://localhost:5173)
-npm run build        # Build for production
-npm run lint         # Run ESLint
-npm run lint:fix     # Fix ESLint issues
-npm run type-check   # TypeScript type checking
-npm run preview      # Preview production build
+yarn dev             # Start development server (http://localhost:5173)
+yarn build           # Build for production
+yarn lint            # Run ESLint
+yarn lint:fix        # Fix ESLint issues
+yarn type-check      # TypeScript type checking
+yarn preview         # Preview production build
 ```
 
 ### Backend (Node.js + Express)
 
 ```bash
 cd backend
-npm run dev          # Start development server with hot reload (port 3001)
-npm run build        # Compile TypeScript to JavaScript
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run lint:fix     # Fix ESLint issues
-npm run type-check   # TypeScript type checking without compilation
-npm test             # Run Jest tests
-npm run test:watch   # Run tests in watch mode
-npm run test:coverage # Run tests with coverage
+yarn dev             # Start development server with hot reload (port 3001)
+yarn build           # Compile TypeScript to JavaScript
+yarn start           # Start production server
+yarn lint            # Run ESLint
+yarn lint:fix        # Fix ESLint issues
+yarn type-check      # TypeScript type checking without compilation
+yarn test            # Run Jest tests
+yarn test:watch      # Run tests in watch mode
+yarn test:coverage   # Run tests with coverage
 ```
 
 ## Key Technologies
@@ -353,13 +353,13 @@ The frontend uses a comprehensive Web3-themed design system:
 
 ```bash
 # Backend debugging
-npm run type-check                     # Check TypeScript errors
+yarn type-check                     # Check TypeScript errors
 tail -f backend/logs/app.log          # View application logs
 curl http://localhost:3001/health     # Check service health
 
 # Frontend debugging  
-npm run type-check                     # Check TypeScript errors
-npm run build                         # Test production build
+yarn type-check                     # Check TypeScript errors
+yarn build                         # Test production build
 ```
 
 For detailed backend-specific guidance, see `backend/CLAUDE.md`.

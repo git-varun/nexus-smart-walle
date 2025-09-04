@@ -6,7 +6,6 @@ import {useBackendSmartAccount} from '../../hooks/useBackendSmartAccount';
 
 export const AlchemyAccountCreator: React.FC = () => {
     const [email, setEmail] = useState('');
-    const [isCreating, setIsCreating] = useState(false);
     const {
         smartAccountAddress,
         isAuthenticated,

@@ -1,25 +1,8 @@
-// User model exports
-export type {User, CreateUserInput, UpdateUserInput} from './User';
-export {validateEmail, validateUserInput} from './User';
+// Export all schemas and models
+export {UserModel} from './User.schema';
+export {SessionModel} from './Session.schema';
+export {SmartAccountModel} from './Account.schema';
+export {TransactionModel} from './Transaction.schema';
 
-// SmartAccount model exports
-export type {SmartAccount, CreateSmartAccountInput, UpdateSmartAccountInput} from './SmartAccount';
-export {validateAddress as validateAccountAddress, validateChainId, validateSmartAccountInput} from './SmartAccount';
-
-// Transaction model exports
-export type {Transaction, TransactionStatus, CreateTransactionInput, UpdateTransactionInput} from './Transaction';
-export {
-    validateTransactionHash,
-    validateAddress as validateTransactionAddress,
-    validateTransactionStatus,
-    validateTransactionInput
-} from './Transaction';
-
-// Session model exports
-export type {Session, CreateSessionInput} from './Session';
-export {
-    validateSessionToken,
-    validateSessionInput,
-    isSessionExpired,
-    isSessionValid
-} from './Session';
+// Export types from types folder
+export type {UserDocument, SmartAccountDocument, TransactionDocument, SessionDocument} from '../types/infrastructure';

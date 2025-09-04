@@ -7,10 +7,8 @@ import {alchemy, baseSepolia} from '@account-kit/infra';
 import {SmartAccountInfo} from '../types/account';
 import {BatchExecuteParams, ExecuteTransactionParams} from '../types/transaction';
 import {useToast} from './useToast';
-import {useAccountCreationProgress} from './useAccountCreationProgress';
 import * as viem from 'viem';
-import SmartAccountAbi from '../abis/SmartAccount.json';
-
+// SmartAccount ABI (temporarily removed)
 // Redux imports
 import {useAppDispatch, useAppSelector} from '../store/hooks';
 import {
@@ -27,7 +25,6 @@ import {
 } from '../store/smartAccountSlice';
 import {clearSmartAccountObjects, setSmartAccountObjects,} from '../store/smartAccountObjectsSlice';
 import {
-    selectCreationError,
     selectGuardianError,
     selectIsCreatingAccount,
     selectIsExecuting,
@@ -48,14 +45,29 @@ export const useSmartAccount = () => {
     const publicClient = usePublicClient();
     const {data: walletClient} = useWalletClient();
     const {toast} = useToast();
-    const accountProgress = useAccountCreationProgress();
+    // Simple progress tracking (replacing useAccountCreationProgress)
+    const simpleProgress = {
+        startProcess: () => {
+        },
+        runStep: async (name: string, fn: () => Promise<any>) => fn(),
+        updateStepStatus: () => {
+        },
+        finishProcess: () => {
+        },
+        isProcessing: false,
+        progress: 0,
+        completedSteps: 0,
+        totalSteps: 0,
+        hasError: false,
+        resetProgress: () => {
+        }
+    };
 
     // Redux state
     const dispatch = useAppDispatch();
     const smartAccountAddress = useAppSelector(selectSmartAccountAddress);
     const smartAccountInfo = useAppSelector(selectSmartAccountInfo);
     const isCreatingAccount = useAppSelector(selectIsCreatingAccount);
-    const creationError = useAppSelector(selectCreationError);
     const isExecuting = useAppSelector(selectIsExecuting);
     const isLoading = useAppSelector(selectIsLoading);
     const newGuardian = useAppSelector(selectNewGuardian);
@@ -82,14 +94,14 @@ export const useSmartAccount = () => {
 
         // Start the progress tracking
         console.log('📊 Starting progress tracking...');
-        accountProgress.startProcess();
+        simpleProgress.startProcess();
         dispatch(setIsCreatingAccount(true));
         dispatch(setCreationError(null));
         console.log('📊 Progress tracking started, isCreatingAccount set to true');
 
         try {
             // Step 1: Validate wallet connection
-            await accountProgress.runStep(
+            await simpleProgress.runStep(
                 'validate-wallet',
                 async () => {
                     console.log('Validating prerequisites...');
@@ -110,7 +122,7 @@ export const useSmartAccount = () => {
 
             // Step 2: Create transport
             let transport: any;
-            await accountProgress.runStep(
+            await simpleProgress.runStep(
                 'create-transport',
                 async () => {
                     console.log('Creating Alchemy transport...');
@@ -125,7 +137,7 @@ export const useSmartAccount = () => {
 
             // Step 3: Create signer
             let signer: WalletClientSigner;
-            await accountProgress.runStep(
+            await simpleProgress.runStep(
                 'create-signer',
                 async () => {
                     console.log('Creating wallet client signer...');
@@ -141,7 +153,7 @@ export const useSmartAccount = () => {
 
             // Step 4: Create smart account
             let account: any;
-            await accountProgress.runStep(
+            await simpleProgress.runStep(
                 'create-account',
                 async () => {
                     console.log('Creating smart account...');
@@ -158,7 +170,7 @@ export const useSmartAccount = () => {
 
             // Update the step with the actual address after creation
             if (account?.address) {
-                accountProgress.updateStepStatus(
+                simpleProgress.updateStepStatus(
                     'create-account',
                     'completed',
                     `Smart account deployed at ${account.address.slice(0, 6)}...${account.address.slice(-4)}`
@@ -167,7 +179,7 @@ export const useSmartAccount = () => {
 
             // Step 5: Create smart account client
             let client: any;
-            await accountProgress.runStep(
+            await simpleProgress.runStep(
                 'create-client',
                 async () => {
                     console.log('Creating smart account client...');
@@ -183,7 +195,7 @@ export const useSmartAccount = () => {
             );
 
             // Step 6: Finalize setup
-            await accountProgress.runStep(
+            await simpleProgress.runStep(
                 'finalize',
                 async () => {
                     console.log('Finalizing setup...');
@@ -238,12 +250,12 @@ export const useSmartAccount = () => {
         } finally {
             console.log('🏁 Account creation process finishing...');
 
-            accountProgress.finishProcess();
+            simpleProgress.finishProcess();
             dispatch(setIsCreatingAccount(false));
 
             console.log('🏁 Account creation process completed');
         }
-    }, [address, publicClient, walletClient, toast, accountProgress, dispatch]);
+    }, [address, publicClient, walletClient, toast, simpleProgress, dispatch]);
 
     // Execute single transaction
     const executeTransaction = useCallback(async (params: ExecuteTransactionParams) => {
@@ -473,7 +485,7 @@ export const useSmartAccount = () => {
         paymasterDeposit: '0.1', // TODO: Fetch real paymaster deposit
 
         // Progress tracking
-        creationProgress: accountProgress,
+        creationProgress: simpleProgress,
 
         // Actions
         createSmartAccount,
