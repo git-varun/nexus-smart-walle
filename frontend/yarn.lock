@@ -4594,9 +4594,9 @@ hmac-drbg@^1.0.1:
     minimalistic-crypto-utils "^1.0.1"
 
 hono@^4.9.6:
-  version "4.9.9"
-  resolved "https://registry.yarnpkg.com/hono/-/hono-4.9.9.tgz#a32ee02a5a9c4be8e7f4d48e4e181e738a1d65d7"
-  integrity sha512-Hxw4wT6zjJGZJdkJzAx9PyBdf7ZpxaTSA0NfxqjLghwMrLBX8p33hJBzoETRakF3UJu6OdNQBZAlNSkGqKFukw==
+  version "4.10.4"
+  resolved "https://registry.yarnpkg.com/hono/-/hono-4.10.4.tgz#226f19a7be0f524c3acb736f5c9da5bd081954ca"
+  integrity sha512-YG/fo7zlU3KwrBL5vDpWKisLYiM+nVstBQqfr7gCPbSYURnNEP9BDxEMz8KfsDR9JX0lJWDRNc6nXX31v7ZEyg==
 
 humanize-ms@^1.2.1:
   version "1.2.1"
