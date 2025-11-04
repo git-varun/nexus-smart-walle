@@ -96,8 +96,203 @@ class ApiClient {
     private baseUrl: string;
 
     constructor() {
-        // Use environment variable or default to backend port 3000
-        this.baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        // Use environment variable or default to backend port 3001
+        this.baseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3001';
+    }
+
+    // Authentication API - Updated to match backend routes
+    async getAuthStatus(token?: string): Promise<ApiResponse<{ authenticated: boolean; user: User | null }>> {
+        const headers: Record<string, string> = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        return this.request<{ authenticated: boolean; user: User | null }>('/api/auth/status', {
+            headers,
+        });
+    }
+
+    async register(email: string, password: string): Promise<ApiResponse<{
+        user: User;
+        token: string;
+    }>> {
+        return this.request<{ user: User; token: string }>('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({email, password}),
+        });
+    }
+
+    async login(email: string, password: string): Promise<ApiResponse<{
+        user: User;
+        token: string;
+    }>> {
+        return this.request<{ user: User; token: string }>('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({email, password}),
+        });
+    }
+
+    async authenticate(email: string): Promise<ApiResponse<{
+        user: User;
+        token: string;
+        smartAccountAddress?: string
+    }>> {
+        return this.request<{ user: User; token: string; smartAccountAddress?: string }>('/api/auth/authenticate', {
+            method: 'POST',
+            body: JSON.stringify({email}),
+        });
+    }
+
+    async logout(token?: string): Promise<ApiResponse<{ message: string }>> {
+        const headers: Record<string, string> = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        return this.request<{ message: string }>('/api/auth/logout', {
+            method: 'POST',
+            headers,
+        });
+    }
+
+    // Account API - Updated to match backend structure
+    async createSmartAccount(token: string, chainId?: number, accountType?: string): Promise<ApiResponse<{
+        smartAccount: SmartAccountInfo
+    }>> {
+        const payload: any = {};
+        if (chainId) {
+            payload.chainId = chainId;
+        }
+        if (accountType) {
+            payload.accountType = accountType;
+        }
+
+        return this.request<{ smartAccount: SmartAccountInfo }>('/api/accounts/create', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+            body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined,
+        });
+    }
+
+    async getAccountByAddress(address: Address, chainId?: number): Promise<ApiResponse<{ account: SmartAccountInfo }>> {
+        const searchParams = new URLSearchParams();
+        if (chainId) {
+            searchParams.append('chainId', chainId.toString());
+        }
+
+        const query = searchParams.toString();
+        return this.request<{ account: SmartAccountInfo }>(`/api/accounts/${address}${query ? `?${query}` : ''}`);
+    }
+
+    async getUserAccounts(token: string, chainId?: number): Promise<ApiResponse<{ accounts: SmartAccountInfo[] }>> {
+        const searchParams = new URLSearchParams();
+        if (chainId) {
+            searchParams.append('chainId', chainId.toString());
+        }
+
+        const query = searchParams.toString();
+        return this.request<{ accounts: SmartAccountInfo[] }>(`/api/accounts/me${query ? `?${query}` : ''}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    }
+
+    // Transaction API - Updated to match backend structure
+    async sendTransaction(
+        token: string,
+        to: Address,
+        data?: string,
+        value?: bigint,
+        providers?: { bundler: string; paymaster: string; chainId: number }
+    ): Promise<ApiResponse<{ transaction: TransactionResult }>> {
+        const payload: any = {
+            to,
+            data: data || '0x',
+            value: value ? value.toString() : '0',
+        };
+
+        // Add provider information if provided
+        if (providers) {
+            payload.bundlerId = providers.bundler;  // Backend expects bundlerId, not bundler
+            payload.paymaster = providers.paymaster;
+            payload.chainId = providers.chainId;
+        }
+
+        return this.request<{ transaction: TransactionResult }>('/api/transactions/send', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+    }
+
+    async getTransactionByHash(hash: string): Promise<ApiResponse<{ transaction: TransactionHistory }>> {
+        return this.request<{ transaction: TransactionHistory }>(`/api/transactions/${hash}`);
+    }
+
+    async getTransactionHistory(token: string, chainId?: number, limit?: number): Promise<ApiResponse<{
+        transactions: TransactionHistory[];
+        count: number
+    }>> {
+        const searchParams = new URLSearchParams();
+        if (chainId) searchParams.append('chainId', chainId.toString());
+        if (limit) searchParams.append('limit', limit.toString());
+
+        const query = searchParams.toString();
+        return this.request<{
+            transactions: TransactionHistory[];
+            count: number
+        }>(`/api/transactions/history${query ? `?${query}` : ''}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    }
+
+    async estimateGas(
+        token: string,
+        chainId: number,
+        bundler: string,
+        to: Address,
+        data?: string,
+        value?: bigint
+    ): Promise<ApiResponse<{ gasEstimate: string; gasLimit: string; breakdown: any }>> {
+        const payload: any = {
+            to,
+            data: data || '0x',
+            value: value ? value.toString() : '0',
+            chainId,
+            bundler
+        };
+
+        return this.request<{
+            gasEstimate: string;
+            gasLimit: string;
+            breakdown: any
+        }>('/api/transactions/estimate-gas', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+    }
+
+    // Health check - Updated to match backend route
+    async getHealthCheck(): Promise<ApiResponse<{ success: boolean; timestamp: string; database: any; system: any }>> {
+        return this.request<{ success: boolean; timestamp: string; database: any; system: any }>('/api/health');
+    }
+
+    // TODO: Session Key API - To be implemented in future versions
+    // TODO: Recovery API - To be implemented in future versions
+
+    // System stats
+    async getSystemStats(): Promise<ApiResponse<{ users: any; accounts: any; transactions: any; sessions: any }>> {
+        return this.request<{ users: any; accounts: any; transactions: any; sessions: any }>('/api/stats');
     }
 
     private async request<T>(
@@ -151,141 +346,6 @@ class ApiClient {
                 }
             };
         }
-    }
-
-    // Authentication API - Updated to match backend routes
-    async getAuthStatus(token?: string): Promise<ApiResponse<{ authenticated: boolean; user: User | null }>> {
-        const headers: Record<string, string> = {};
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        return this.request<{ authenticated: boolean; user: User | null }>('/api/auth/status', {
-            headers,
-        });
-    }
-
-    async authenticate(email: string): Promise<ApiResponse<{
-        user: User;
-        token: string;
-        smartAccountAddress?: string
-    }>> {
-        return this.request<{ user: User; token: string; smartAccountAddress?: string }>('/api/auth/authenticate', {
-            method: 'POST',
-            body: JSON.stringify({email}),
-        });
-    }
-
-    async logout(token?: string): Promise<ApiResponse<{ message: string }>> {
-        const headers: Record<string, string> = {};
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        return this.request<{ message: string }>('/api/auth/logout', {
-            method: 'POST',
-            headers,
-        });
-    }
-
-    // Account API - Updated to match backend structure
-    async createSmartAccount(token: string): Promise<ApiResponse<{ account: SmartAccountInfo }>> {
-        return this.request<{ account: SmartAccountInfo }>('/api/accounts/create', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
-    }
-
-    async getAccountByAddress(address: Address): Promise<ApiResponse<{ account: SmartAccountInfo }>> {
-        return this.request<{ account: SmartAccountInfo }>(`/api/accounts/${address}`);
-    }
-
-    async getUserAccounts(token: string): Promise<ApiResponse<{ accounts: SmartAccountInfo[] }>> {
-        return this.request<{ accounts: SmartAccountInfo[] }>('/api/accounts/me', {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
-    }
-
-    // Transaction API - Updated to match backend structure
-    async sendTransaction(
-        token: string,
-        to: Address,
-        data?: string,
-        value?: bigint
-    ): Promise<ApiResponse<{ transaction: TransactionResult }>> {
-        const payload: TransactionRequest = {
-            to,
-            data: data || '0x',
-            value: value ? value.toString() : '0',
-        };
-
-        return this.request<{ transaction: TransactionResult }>('/api/transactions/send', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify(payload),
-        });
-    }
-
-    async getTransactionByHash(hash: string): Promise<ApiResponse<{ transaction: TransactionHistory }>> {
-        return this.request<{ transaction: TransactionHistory }>(`/api/transactions/${hash}`);
-    }
-
-    async getTransactionHistory(token: string, limit?: number): Promise<ApiResponse<{
-        transactions: TransactionHistory[];
-        count: number
-    }>> {
-        const searchParams = new URLSearchParams();
-        if (limit) searchParams.append('limit', limit.toString());
-
-        const query = searchParams.toString();
-        return this.request<{
-            transactions: TransactionHistory[];
-            count: number
-        }>(`/api/transactions/history${query ? `?${query}` : ''}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
-    }
-
-    async estimateGas(
-        to: Address,
-        data?: string,
-        value?: bigint
-    ): Promise<ApiResponse<{ gasEstimate: string; gasLimit: string; breakdown: any }>> {
-        const payload: TransactionRequest = {
-            to,
-            data: data || '0x',
-            value: value ? value.toString() : '0',
-        };
-
-        return this.request<{
-            gasEstimate: string;
-            gasLimit: string;
-            breakdown: any
-        }>('/api/transactions/estimate-gas', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-        });
-    }
-
-    // TODO: Session Key API - To be implemented in future versions
-    // TODO: Recovery API - To be implemented in future versions
-
-    // Health check - Updated to match backend route
-    async getHealthCheck(): Promise<ApiResponse<{ healthy: boolean; timestamp: string; database: any; system: any }>> {
-        return this.request<{ healthy: boolean; timestamp: string; database: any; system: any }>('/api/health');
-    }
-
-    // System stats
-    async getSystemStats(): Promise<ApiResponse<{ users: any; accounts: any; transactions: any; sessions: any }>> {
-        return this.request<{ users: any; accounts: any; transactions: any; sessions: any }>('/api/stats');
     }
 }
 

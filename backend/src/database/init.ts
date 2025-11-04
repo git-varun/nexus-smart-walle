@@ -1,52 +1,27 @@
-import {dbConnection} from './connection';
+import {connectDB, disconnectDB, isDBConnected} from './connection';
 import {config} from '../config';
-import {createServiceLogger} from '../utils';
-
-const logger = createServiceLogger('DatabaseInit');
 
 export async function initializeDatabase(): Promise<void> {
     try {
-        logger.info('Initializing MongoDB connection...');
-
-        await dbConnection.connect({
-            uri: config.database.mongodb.uri,
-            options: config.database.mongodb.options
-        });
-
-        logger.info('MongoDB connection initialized successfully');
+        console.log('Connecting to MongoDB...');
+        await connectDB(config.database.mongodb.uri);
+        console.log('MongoDB connected successfully');
     } catch (error) {
-        logger.error('Failed to initialize database:', error instanceof Error ? error : new Error(String(error)));
+        console.error('Failed to connect to database:', error);
         throw error;
     }
 }
 
-export async function disconnectDatabase(): Promise<void> {
+export async function closeDatabase(): Promise<void> {
     try {
-        await dbConnection.disconnect();
-        logger.info('Disconnected from MongoDB');
+        await disconnectDB();
+        console.log('MongoDB disconnected');
     } catch (error) {
-        logger.error('Error disconnecting from database:', error instanceof Error ? error : new Error(String(error)));
+        console.error('Error disconnecting from database:', error);
         throw error;
     }
 }
 
-export async function checkDatabaseHealth(): Promise<{
-    type: string;
-    connected: boolean;
-    error?: string;
-}> {
-    try {
-        const health = await dbConnection.healthCheck();
-        return {
-            type: 'mongodb',
-            connected: health.connected,
-            error: health.error
-        };
-    } catch (error) {
-        return {
-            type: 'mongodb',
-            connected: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
-        };
-    }
+export function getDatabaseStatus(): boolean {
+    return isDBConnected();
 }

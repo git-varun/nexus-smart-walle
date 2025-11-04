@@ -1,8 +1,8 @@
 // frontend/src/components/transaction/TransactionInterface.tsx
 import React, {useState} from 'react';
 import {isAddress, parseEther} from 'viem';
-import {useSmartAccount} from '../../hooks/useSmartAccount';
-import {useToast} from '../../hooks/useToast';
+import {useSmartAccount} from '@/hooks/useSmartAccount.ts';
+import {useToast} from '@/hooks/useToast.ts';
 import {Card} from '../ui/Card';
 import {Button} from '../ui/Button';
 import {Input} from '../ui/Input';

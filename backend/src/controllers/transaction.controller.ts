@@ -2,6 +2,7 @@ import {Response} from 'express';
 import {AuthenticatedRequest, getUserId} from '../middleware';
 import {
     estimateGas,
+    getGasPriceObject,
     getUserOperationStatus,
     getUserTransactionHistory,
     sendTransaction as sendTransactionService
@@ -24,7 +25,7 @@ export async function sendTransaction(req: AuthenticatedRequest, res: Response):
             return;
         }
 
-        const {to, data, value, chainId} = req.body;
+        const {to, data, value, chainId, bundlerId} = req.body;
 
         if (!to) {
             res.status(400).json({
@@ -48,11 +49,23 @@ export async function sendTransaction(req: AuthenticatedRequest, res: Response):
             return;
         }
 
-        logger.info('Send transaction request', {userId, to, hasData: !!data, value, chainId});
+        if (!bundlerId) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'MISSING_BUNDLER_ID',
+                    message: 'Chain ID is required'
+                }
+            });
+            return;
+        }
+
+        logger.info('Send transaction request', {userId, to, hasData: !!data, value, chainId, bundlerId});
 
         const result = await sendTransactionService(
             userId,
             chainId,
+            bundlerId,
             {to, data, value: value?.toString()}
         );
 
@@ -216,7 +229,7 @@ export async function getGasEstimation(req: AuthenticatedRequest, res: Response)
             return;
         }
 
-        const {to, data, value, chainId} = req.body;
+        const {to, data, value, chainId, bundler} = req.body;
 
         if (!to) {
             res.status(400).json({
@@ -240,6 +253,17 @@ export async function getGasEstimation(req: AuthenticatedRequest, res: Response)
             return;
         }
 
+        if (!bundler) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'MISSING_BUNDLER_ID',
+                    message: 'Chain ID is required'
+                }
+            });
+            return;
+        }
+
         // Convert chainId to number for consistent comparison
         const chainIdNumber = parseInt(chainId.toString(), 10);
 
@@ -248,6 +272,7 @@ export async function getGasEstimation(req: AuthenticatedRequest, res: Response)
         const result = await estimateGas(
             userId,
             chainIdNumber,
+            bundler,
             {to, data, value: value?.toString()}
         );
 
@@ -275,6 +300,63 @@ export async function getGasEstimation(req: AuthenticatedRequest, res: Response)
             error: {
                 code: 'INTERNAL_ERROR',
                 message: 'Failed to estimate gas'
+            }
+        });
+    }
+}
+
+export async function getGasPrice(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+
+        const {chainId, bundlerId} = req.body;
+        if (!chainId) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'MISSING_CHAIN_ID',
+                    message: 'Chain ID is required'
+                }
+            });
+            return;
+        }
+
+        if (!bundlerId) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'MISSING_BUNDLER_ID',
+                    message: 'Chain ID is required'
+                }
+            });
+            return;
+        }
+
+        logger.info('Get latest transaction gas price', chainId, bundlerId);
+
+        const result = await getGasPriceObject(chainId, bundlerId);
+
+        if (result.success) {
+            res.status(200).json({
+                success: true,
+                data: result.gasPrice
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'GAS_PRICE_FAILED',
+                    message: result.error
+                }
+            });
+        }
+
+    } catch (error) {
+        logger.error('Get transaction history failed', error instanceof Error ? error : new Error(String(error)));
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 'INTERNAL_ERROR',
+                message: 'Failed to get transaction history'
             }
         });
     }

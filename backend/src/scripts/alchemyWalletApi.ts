@@ -10,7 +10,14 @@ import {
     SignatureRequest,
     WalletCapabilities
 } from '../types/alchemyTypes';
+import {numberToHex} from "viem";
+import {signMessage} from "../utils/helpers";
+import {privateKeyToAccount} from "viem/accounts";
+import {generateSalt} from "../utils/viemHelpers";
+import {createServiceLogger} from "../utils";
 
+
+const logger = createServiceLogger("alchemyWalletApi");
 
 const TIMEOUT = 10000;
 
@@ -67,19 +74,15 @@ export const makeAlchemyRequest = async <T>(method: string, params: any[]): Prom
  * This is the core method for centralized wallet integration
  */
 export const requestAccount = async (
-    signerAddress: string,
-    creationParams?: {
-        id?: string;
-        salt?: string;
-        accountType?: string;
-    }
+    userId: string, chainId: number, accountType: string
 ): Promise<AlchemyWalletRequestAccountResponse> => {
-    const accountId = creationParams?.id || crypto.randomUUID();
-    const salt = creationParams?.salt || "0x2";
-    const accountType = creationParams?.accountType || "sma-b";
+
+    const account = privateKeyToAccount(config.centralWallet.privateKey as `0x${string}`);
+    const accountId = crypto.randomUUID();
+    const salt = generateSalt(userId, chainId);
 
     const requestParams = {
-        signerAddress,
+        signerAddress: account.address,
         id: accountId,
         creationHint: {
             salt: salt,
@@ -89,7 +92,7 @@ export const requestAccount = async (
         includeCounterfactualInfo: true
     };
 
-    console.log('Requesting smart account:', signerAddress);
+    logger.info('Requesting smart account:');
 
     return await makeAlchemyRequest<AlchemyWalletRequestAccountResponse>(
         'wallet_requestAccount',
@@ -97,17 +100,45 @@ export const requestAccount = async (
     );
 }
 
-export const wallet_prepareCalls = async (params: any[]): Promise<PreparedCalls> => {
+export const wallet_prepareCalls = async (address: string, chainId: number, request: any): Promise<any> => {
     console.log('Preparing wallet calls');
+    const params = [{
+        from: address,
+        chainId: numberToHex(chainId),
+        calls: [request],
+        capabilities: {
+            paymasterService: {
+                policyId: config.alchemy.policyId,
+            }
+        }
+    }];
     return await makeAlchemyRequest<PreparedCalls>('wallet_prepareCalls', params);
 };
 
-export const wallet_sendPreparedCalls = async (params: any): Promise<{ preparedCallIds: string[]; }> => {
-    console.log('Sending prepared calls:', params);
-    return await makeAlchemyRequest<{ preparedCallIds: string[]; }>(
+export const wallet_sendPreparedCalls = async (userOperation: any): Promise<string> => {
+    console.log('Sending prepared calls');
+
+    const params = {
+        type: userOperation.type,
+        data: userOperation.data,
+        chainId: userOperation.chainId,
+        signature: {
+            type: "secp256k1",
+            data: await signMessage(userOperation.signatureRequest.data.raw)
+        }
+    }
+    console.log('Sending prepared calls send', params);
+
+    const result = await makeAlchemyRequest<{ preparedCallIds: string[]; }>(
         'wallet_sendPreparedCalls',
         [params]
     );
+
+    if (!result.preparedCallIds || !result.preparedCallIds.length) {
+        throw new Error('Failed to send user operation');
+    }
+
+    return result.preparedCallIds[0];
 };
 
 export const wallet_getCallsStatus = async (preparedCallIds: string[]): Promise<CallsStatus> => {
@@ -144,3 +175,12 @@ export const wallet_prepareSign = async (signatureRequest: SignatureRequest): Pr
         [signatureRequest]
     );
 };
+
+export const getUserOperationByHash = async (userOpHash: [string]): Promise<string | null> => {
+    console.log('Getting user operation by hash');
+    const params = [
+        userOpHash,
+    ]
+
+    return await makeAlchemyRequest('eth_getUserOperationReceipt', params)
+}

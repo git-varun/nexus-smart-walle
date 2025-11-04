@@ -8,8 +8,6 @@ import {SmartAccountInfo} from '../types/account';
 import {BatchExecuteParams, ExecuteTransactionParams} from '../types/transaction';
 import {useToast} from './useToast';
 import * as viem from 'viem';
-// SmartAccount ABI (temporarily removed)
-// Redux imports
 import {useAppDispatch, useAppSelector} from '../store/hooks';
 import {
     completeAccountCreation,

@@ -79,7 +79,7 @@ export const WalletDashboard: React.FC = () => {
 
         try {
             const value = txValue ? parseEther(txValue) : BigInt(0);
-            await estimateGas(txTo as Address, txData || '0x', value);
+            await estimateGas(txTo as Address, txData || '0x', value, 'alchemy');
         } catch (err) {
             console.error('Gas estimation failed:', err);
         }

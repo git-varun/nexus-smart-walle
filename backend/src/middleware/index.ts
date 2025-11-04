@@ -1,9 +1,3 @@
-// Authentication middleware
-export {
-    requireAuth,      // Primary authentication middleware
-    getUserId,
-    getToken
-} from './auth.middleware';
-
-// Export types from types folder
+export {requireAuth, getUserId} from './auth.middleware';
+export {errorHandler} from './errorHandler.middleware';
 export type {AuthenticatedRequest} from '../types/api';

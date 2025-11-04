@@ -1,10 +1,4 @@
-import type {
-    CreateSessionInput,
-    CreateSmartAccountInput,
-    CreateTransactionInput,
-    CreateUserInput,
-    Session
-} from '../types';
+import type {CreateSmartAccountInput, CreateTransactionInput, CreateUserInput} from '../types';
 
 // ============================================================================
 // BASIC VALIDATION FUNCTIONS
@@ -137,58 +131,4 @@ export function validateTransactionInput(input: CreateTransactionInput): string 
     return null; // Valid
 }
 
-// Session input validation
-export function validateSessionInput(input: CreateSessionInput): string | null {
-    if (!input.userId) {
-        return 'User ID is required';
-    }
 
-    if (!input.token) {
-        return 'Token is required';
-    }
-
-    if (!validateSessionToken(input.token)) {
-        return 'Invalid token format';
-    }
-
-    if (!input.expiresAt) {
-        return 'Expiration date is required';
-    }
-
-    if (!isDateInFuture(input.expiresAt)) {
-        return 'Expiration date must be in the future';
-    }
-
-    return null; // Valid
-}
-
-// ============================================================================
-// SESSION HELPER FUNCTIONS
-// ============================================================================
-
-export function isSessionExpired(session: Session): boolean {
-    return isDateExpired(session.expiresAt);
-}
-
-export function isSessionValid(session: Session): boolean {
-    return !isSessionExpired(session) && validateSessionToken(session.token);
-}
-
-// Calculate session duration in milliseconds
-export function getSessionDuration(session: Session): number {
-    return session.expiresAt.getTime() - session.createdAt.getTime();
-}
-
-// Calculate remaining session time in milliseconds
-export function getRemainingSessionTime(session: Session): number {
-    const now = new Date().getTime();
-    const expiresAt = session.expiresAt.getTime();
-    return Math.max(0, expiresAt - now);
-}
-
-// Check if session expires within given minutes
-export function isSessionExpiringSoon(session: Session, minutesThreshold: number = 15): boolean {
-    const remainingMs = getRemainingSessionTime(session);
-    const thresholdMs = minutesThreshold * 60 * 1000;
-    return remainingMs <= thresholdMs && remainingMs > 0;
-}

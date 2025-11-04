@@ -17,7 +17,7 @@ export function generateToken(userId: string, email?: string): string {
     return jwt.sign(
         {userId, email},
         jwtSecret,
-        {expiresIn: `${config.security.sessionExpiryHours}h`}
+        {expiresIn: `${config.security.tokenExpiryHours}h`}
     );
 }
 
@@ -94,7 +94,15 @@ export async function validateToken(token: string): Promise<SessionValidationRes
             return {success: false, error: 'User not found'};
         }
 
-        return {success: true, user};
+        return {
+            success: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                createdAt: user.createdAt,
+                lastLogin: user.lastLogin
+            }
+        };
     } catch (error) {
         logger.error('Token validation failed', error instanceof Error ? error : new Error(String(error)));
         return {success: false, error: 'Token validation failed'};
@@ -139,8 +147,7 @@ export async function getAuthStatus(token?: string): Promise<AuthStatusResult> {
                 id: tokenResult.user.id,
                 email: tokenResult.user.email,
                 createdAt: tokenResult.user.createdAt,
-                lastLogin: tokenResult.user.lastLogin,
-                password: ""
+                lastLogin: tokenResult.user.lastLogin
             }
         };
     } catch (error) {

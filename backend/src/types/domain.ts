@@ -6,7 +6,6 @@
 export interface User {
     id: string;
     email?: string;
-    password: string;
     createdAt: Date;
     lastLogin?: Date;
 }
@@ -18,7 +17,7 @@ export interface CreateUserInput {
 }
 
 export interface UpdateUserInput {
-    password: undefined;
+    password?: string;
     lastLogin?: Date;
 }
 

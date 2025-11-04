@@ -71,7 +71,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         const hashedPassword = await hashPassword(password);
 
         // Create new user with hashed password
-        const newUser = await UserRepository.create({
+        const newUser = await UserRepository.createUser({
             email,
             password: hashedPassword
         });
@@ -109,7 +109,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     try {
         const {email, password} = req.body;
 
-        const user = await (UserRepository as any).findByEmailWithPassword(email);
+        const user = await UserRepository.findByEmail(email);
         // Validate input
         if (!user) {
             res.status(400).json({
@@ -169,7 +169,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 // Logout user (JWT is stateless - client should delete token)
 export const logout = async (req: Request, res: Response): Promise<void> => {
     try {
-        const result = logoutUser();
+        logoutUser();
 
         res.status(200).json({
             success: true,

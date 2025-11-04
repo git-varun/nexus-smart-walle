@@ -7,7 +7,12 @@ import {Button} from '../ui/Button';
 
 type WalletType = 'metamask' | 'email' | null;
 
-export const WalletTypeSelector: React.FC = () => {
+interface WalletTypeSelectorProps {
+    onEmailLogin?: () => void;
+    onMetaMaskSuccess?: (userData: any) => void;
+}
+
+export const WalletTypeSelector: React.FC<WalletTypeSelectorProps> = ({onEmailLogin, onMetaMaskSuccess}) => {
     const [selectedWalletType, setSelectedWalletType] = useState<WalletType>(null);
     const {isConnected} = useAccount();
     const {disconnect} = useDisconnect();
@@ -66,7 +71,7 @@ export const WalletTypeSelector: React.FC = () => {
 
                     {/* Email Option */}
                     <Card className="p-6 hover:bg-white/5 transition-colors cursor-pointer"
-                          onClick={() => handleWalletTypeSelect('email')}>
+                          onClick={() => onEmailLogin ? onEmailLogin() : handleWalletTypeSelect('email')}>
                         <div className="flex items-center space-x-4">
                             <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
                                 📧

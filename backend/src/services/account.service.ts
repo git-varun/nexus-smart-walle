@@ -1,159 +1,56 @@
-import {Address, createPublicClient, http} from 'viem';
-import {baseSepolia} from 'viem/chains';
-import {config} from '../config';
-import {SmartAccount, SmartAccountResult} from '../types';
+import {Address} from 'viem';
 import {accountRepository} from '../repositories';
 import {createServiceLogger} from '../utils';
 import {requestAccount} from '../scripts/alchemyWalletApi';
-import * as ethers from 'ethers';
+import {IAccount} from "../models";
 
 const logger = createServiceLogger('AccountService');
 
-let publicClient: any = null;
-
-
-function getPublicClient() {
-    if (!publicClient) {
-        publicClient = createPublicClient({
-            chain: baseSepolia,
-            transport: http(`https://base-sepolia.g.alchemy.com/v2/${config.alchemy.apiKey}`)
-        });
-    }
-    return publicClient;
-}
-
-export async function getOrCreateUserAccount(
+export async function createUserAccount(
     userId: string,
-    chainId: number
-): Promise<SmartAccountResult> {
+    chainId: number,
+    accountType: string
+): Promise<{ success: boolean, account?: IAccount, error?: Error | string }> {
     try {
-        logger.info('Starting account lookup', {userId, chainId});
 
-        const existingAccounts = await accountRepository.findByUserId(userId);
+        logger.info('Creating new account', {userId, chainId, accountType});
 
-        logger.info('Database lookup result', {
+        const alchemyResponse = await requestAccount(userId, chainId, accountType);
+        const newAccount = await accountRepository.createAccount({
             userId,
+            address: alchemyResponse.accountAddress as Address,
             chainId,
-            accountsFound: existingAccounts.length,
-            accounts: existingAccounts.map(acc => ({
-                id: acc.id,
-                address: acc.address,
-                chainId: acc.chainId,
-                alchemyAccountId: acc.alchemyAccountId
-            }))
+            isDeployed: false,
+            balance: '0',
+            nonce: 0,
+            signerAddress: "CENTRAL_WALLET",
+            alchemyAccountId: alchemyResponse.id,
+            accountType: accountType,
+            factoryAddress: alchemyResponse.counterfactualInfo?.factoryAddress,
+            factoryData: alchemyResponse.counterfactualInfo?.factoryData
         });
 
-        const chainAccount = existingAccounts.find(acc => Number(acc.chainId) === Number(chainId));
+        logger.info('Created new account via Alchemy', newAccount);
 
-        if (chainAccount) {
-            logger.info('Found existing account for chain', {
+        return {
+            success: true,
+            account: newAccount
+        };
+
+    } catch (error: any) {
+        if (error?.message?.includes('already exists')) {
+            logger.warn('Account already exists in Alchemy, but not in our database', {
                 userId,
                 chainId,
-                accountId: chainAccount.id,
-                address: chainAccount.address
-            });
-
-            const client = getPublicClient();
-            const balance = await client.getBalance({address: chainAccount.address as Address});
-
-            const updatedAccount = await accountRepository.update(chainAccount.id, {
-                balance: balance.toString()
-            });
-
-            logger.info('Using existing account', {userId, address: chainAccount.address});
-
-            return {
-                success: true,
-                account: updatedAccount || undefined
-            };
-        }
-
-        logger.info('No existing account found for chain, creating new one', {userId, chainId});
-
-        // Generate a new signer address using central wallet as base
-        const wallet = new ethers.Wallet(config.centralWallet.privateKey);
-        const signerAddress = wallet.address;
-
-        // Generate UUID and creation parameters that we'll send to Alchemy
-        const requestId = crypto.randomUUID();
-
-        // Generate unique salt based on userId to avoid conflicts
-        const saltBuffer = ethers.keccak256(ethers.toUtf8Bytes(userId + chainId.toString()));
-        const salt = saltBuffer.slice(0, 10); // Use first 8 bytes + 0x prefix = 10 chars
-
-        const accountType = "sma-b";
-
-        logger.info('Creating new account via Alchemy', {
-            userId,
-            signerAddress,
-            chainId,
-            requestId,
-            salt,
-            accountType
-        });
-
-        try {
-            // Call Alchemy requestAccount API with proper parameters
-            const alchemyResponse = await requestAccount(signerAddress, {
-                id: requestId,
-                salt: salt,
-                accountType: accountType
-            });
-
-            const newAccount = await accountRepository.create({
-                userId,
-                address: alchemyResponse.accountAddress as Address,
-                chainId,
-                isDeployed: false,
-                balance: '0',
-                nonce: 0,
-                signerAddress: signerAddress as Address,
-                alchemyAccountId: alchemyResponse.id,
-                requestId: requestId,
-                salt: salt,
-                accountType: accountType,
-                factoryAddress: alchemyResponse.counterfactualInfo?.factoryAddress
-            });
-
-            logger.info('Created new account via Alchemy', {
-                userId,
-                address: alchemyResponse.accountAddress,
-                alchemyAccountId: alchemyResponse.id,
-                requestId: requestId,
-                salt: salt,
-                accountType: accountType,
-                factoryAddress: alchemyResponse.counterfactualInfo?.factoryAddress
+                error: error?.message
             });
 
             return {
-                success: true,
-                account: newAccount
+                success: false,
+                error: 'Account already exists in Alchemy but not found in a local database. Please contact support.'
             };
-
-        } catch (alchemyError: any) {
-            // Handle specific case where account already exists
-            if (alchemyError.message?.includes('already exists')) {
-                logger.warn('Account already exists in Alchemy, but not in our database', {
-                    userId,
-                    signerAddress,
-                    salt,
-                    chainId,
-                    error: alchemyError.message
-                });
-
-                // For now, return an error - in production you might want to query Alchemy
-                // for the existing account details
-                return {
-                    success: false,
-                    error: 'Account already exists in Alchemy but not found in local database. Please contact support.'
-                };
-            }
-
-            // Re-throw other Alchemy errors
-            throw alchemyError;
         }
 
-    } catch (error) {
         logger.error('Failed to get or create account', error instanceof Error ? error : new Error(String(error)));
         return {
             success: false,
@@ -162,32 +59,31 @@ export async function getOrCreateUserAccount(
     }
 }
 
-export async function getUserAccountInfo(userId: string, chainId: number): Promise<{
+export async function getUserAccount(userId: string, chainId: number): Promise<{
     success: boolean;
-    account?: SmartAccount;
+    account?: IAccount;
     error?: string;
 }> {
     try {
-        const accounts = await accountRepository.findByUserId(userId);
-        const chainAccount = accounts.find(acc => acc.chainId === chainId);
+        logger.info('Starting account lookup', {userId, chainId});
 
-        if (!chainAccount) {
+        const chainAccount = await accountRepository.findBy({userId, chainId});
+
+        if (!chainAccount.length) {
             return {
                 success: false,
                 error: 'No account found for user'
             };
         }
 
-        const client = getPublicClient();
-        const balance = await client.getBalance({address: chainAccount.address as Address});
-
-        const updatedAccount = await accountRepository.update(chainAccount.id, {
-            balance: balance.toString()
+        logger.info('Account info retrieved', {
+            userId,
+            address: chainAccount[0].address,
         });
 
         return {
             success: true,
-            account: updatedAccount || undefined
+            account: chainAccount[0]
         };
 
     } catch (error) {
@@ -199,14 +95,44 @@ export async function getUserAccountInfo(userId: string, chainId: number): Promi
     }
 }
 
-export async function getAccountDetails(address: string, chainId: number
-): Promise<{
+export async function getUserAccounts(userId: string, chainId: number): Promise<{
     success: boolean;
-    account?: SmartAccount;
+    accounts?: IAccount[];
     error?: string;
 }> {
     try {
-        const account = await accountRepository.findByAddress(address);
+        logger.info('Starting accounts lookup', {userId, chainId});
+
+        const chainAccounts = await accountRepository.findBy({userId, chainId});
+
+        logger.info('Accounts retrieved', {
+            userId,
+            chainId,
+            count: chainAccounts.length
+        });
+
+        return {
+            success: true,
+            accounts: chainAccounts
+        };
+
+    } catch (error) {
+        logger.error('Failed to get user accounts', error instanceof Error ? error : new Error(String(error)));
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to get user accounts'
+        };
+    }
+}
+
+export async function getAccountDetails(address: string, chainId: number
+): Promise<{
+    success: boolean;
+    account?: IAccount;
+    error?: string;
+}> {
+    try {
+        const account = await accountRepository.findAccountByAddress(address);
         if (!account) {
             return {
                 success: false,

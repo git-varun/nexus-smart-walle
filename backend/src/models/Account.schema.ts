@@ -1,35 +1,42 @@
-import mongoose, {Schema} from 'mongoose';
-import {SmartAccountDocument} from '../types';
+import mongoose, {Document, Schema} from 'mongoose';
 
-const accountSchema = new Schema<SmartAccountDocument>({
+export interface IAccount extends Document {
+    userId: string;
+    address: string;
+    chainId: number;
+    isDeployed: boolean;
+    balance?: string;
+    nonce?: number;
+    signerAddress?: string;
+    alchemyAccountId?: string;
+    requestId?: string;
+    salt?: string;
+    accountType?: string;
+    factoryAddress?: string;
+    factoryData?: string;
+    isActive?: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+const accountSchema = new Schema<IAccount>({
     userId: {
         type: String,
-        required: true,
-        index: true
+        required: true
     },
     address: {
         type: String,
         required: true,
-        lowercase: true,
-        index: true,
-        validate: {
-            validator: function (v: string) {
-                return /^0x[a-fA-F0-9]{40}$/.test(v);
-            },
-            message: 'Address must be a valid Ethereum address'
-        }
+        lowercase: true
     },
     chainId: {
         type: Number,
         required: true,
-        index: true,
-        default: 84532 // Base Sepolia
+        default: 84532
     },
     isDeployed: {
         type: Boolean,
-        required: true,
-        default: false,
-        index: true
+        default: false
     },
     balance: {
         type: String,
@@ -41,33 +48,35 @@ const accountSchema = new Schema<SmartAccountDocument>({
     },
     signerAddress: {
         type: String,
-        required: false,
-        index: true,
-        validate: {
-            validator: function (v: string) {
-                return !v || /^0x[a-fA-F0-9]{40}$/.test(v);
-            },
-            message: 'Signer address must be a valid Ethereum address'
-        }
+        default: null
     },
     alchemyAccountId: {
         type: String,
-        sparse: true, // Allows multiple null values
-        index: true
+        default: null
+    },
+    requestId: {
+        type: String,
+        default: null
+    },
+    salt: {
+        type: String,
+        default: null
+    },
+    accountType: {
+        type: String,
+        default: null
     },
     factoryAddress: {
         type: String,
-        validate: {
-            validator: function (v: string) {
-                return !v || /^0x[a-fA-F0-9]{40}$/.test(v);
-            },
-            message: 'Factory address must be a valid Ethereum address'
-        }
+        default: null
+    },
+    factoryData: {
+        type: String,
+        default: null
     },
     isActive: {
         type: Boolean,
-        default: true,
-        index: true
+        default: true
     },
     createdAt: {
         type: Date,
@@ -78,18 +87,9 @@ const accountSchema = new Schema<SmartAccountDocument>({
         default: Date.now
     }
 }, {
-    timestamps: {createdAt: 'createdAt', updatedAt: 'updatedAt'},
-    collection: 'smart_accounts'
+    timestamps: {createdAt: 'createdAt', updatedAt: 'updatedAt'}
 });
 
-// Compound indexes for efficient querying in centralized wallet system
-accountSchema.index({userId: 1, isActive: 1}); // Find active accounts for user
-accountSchema.index({signerAddress: 1, isActive: 1}); // Find accounts by signer
-accountSchema.index({chainId: 1, isDeployed: 1, isActive: 1}); // Chain-specific deployed accounts
-accountSchema.index({createdAt: -1}); // Latest accounts first
-accountSchema.index({userId: 1, address: 1, chainId: 1}, {unique: true}); // Unique address per user per chain
-
-// Transform _id to ID when converting to JSON
 accountSchema.set('toJSON', {
     transform: function (_doc, ret) {
         ret.id = ret._id;
@@ -99,4 +99,4 @@ accountSchema.set('toJSON', {
     }
 });
 
-export const SmartAccountModel = mongoose.model<SmartAccountDocument>('SmartAccount', accountSchema);
+export const AccountModel = mongoose.model<IAccount>('Account', accountSchema);

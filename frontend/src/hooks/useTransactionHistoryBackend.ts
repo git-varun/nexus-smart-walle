@@ -1,7 +1,8 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Address} from 'viem';
 import {apiClient, GasEstimate, TransactionHistory, TransactionResult} from '../services/apiClient';
 import {useToast} from './useToast';
+import {useBackendSmartAccount} from './useBackendSmartAccount';
 
 interface TransactionHistoryItem {
     hash: string;
@@ -21,18 +22,30 @@ export function useTransactionHistoryBackend() {
     const [error, setError] = useState<string | null>(null);
     const [gasEstimate, setGasEstimate] = useState<GasEstimate | null>(null);
     const {toast} = useToast();
+    const {token, currentChainId} = useBackendSmartAccount();
+    const transactionsRef = useRef<TransactionHistoryItem[]>([]);
+
+    // Keep ref in sync with state
+    useEffect(() => {
+        transactionsRef.current = transactions;
+    }, [transactions]);
 
     // Estimate gas for a transaction
     const estimateGas = useCallback(async (
         to: Address,
         data?: string,
-        value?: bigint
+        value?: bigint,
+        bundler: string = 'alchemy' // Default bundler
     ): Promise<GasEstimate | null> => {
         try {
             setIsEstimating(true);
             setError(null);
 
-            const response = await apiClient.estimateGas(to, data, value);
+            if (!token) {
+                throw new Error('Authentication token not available');
+            }
+
+            const response = await apiClient.estimateGas(token, currentChainId, bundler, to, data, value);
 
             if (response.success && response.data) {
                 setGasEstimate(response.data);
@@ -54,20 +67,21 @@ export function useTransactionHistoryBackend() {
         } finally {
             setIsEstimating(false);
         }
-    }, [toast]);
+    }, [token, currentChainId, toast]);
 
     // Send a new transaction
     const sendTransaction = useCallback(async (
         token: string,
         to: Address,
         data?: string,
-        value?: bigint
+        value?: bigint,
+        providers?: { bundler: string; paymaster: string; chainId: number }
     ): Promise<TransactionResult> => {
         try {
             setIsLoading(true);
             setError(null);
 
-            const response = await apiClient.sendTransaction(token, to, data, value);
+            const response = await apiClient.sendTransaction(token, to, data, value, providers);
 
             if (response.success && response.data) {
                 // Add transaction to local history
@@ -140,12 +154,12 @@ export function useTransactionHistoryBackend() {
 
     // Refresh all pending transactions
     const refreshPendingTransactions = useCallback(async () => {
-        const pendingTxs = transactions.filter(tx => tx.status === 'pending');
+        const pendingTxs = transactionsRef.current.filter(tx => tx.status === 'pending');
 
         for (const tx of pendingTxs) {
             await checkTransactionStatus(tx.hash);
         }
-    }, [transactions, checkTransactionStatus]);
+    }, [checkTransactionStatus]);
 
     // Retry a failed transaction (placeholder - backend doesn't support retry yet)
     const retryTransaction = useCallback(async (_transactionId: string): Promise<TransactionResult | null> => {
@@ -160,13 +174,14 @@ export function useTransactionHistoryBackend() {
     // Fetch transaction history from backend
     const fetchTransactionHistory = useCallback(async (
         token: string,
+        chainId?: number,
         limit?: number
     ) => {
         try {
             setIsLoading(true);
             setError(null);
 
-            const response = await apiClient.getTransactionHistory(token, limit);
+            const response = await apiClient.getTransactionHistory(token, chainId, limit);
 
             if (response.success && response.data) {
                 const backendTransactions: TransactionHistoryItem[] = response.data.transactions.map((tx: TransactionHistory) => ({
@@ -211,18 +226,21 @@ export function useTransactionHistoryBackend() {
         return transactions.filter(tx => tx.status === status);
     }, [transactions]);
 
+    // Memoize pending transactions count to avoid unnecessary effect runs
+    const pendingTransactionsCount = useMemo(() => {
+        return transactions.filter(tx => tx.status === 'pending').length;
+    }, [transactions]);
+
     // Auto-refresh pending transactions periodically
     useEffect(() => {
-        const pendingTxs = transactions.filter(tx => tx.status === 'pending');
-
-        if (pendingTxs.length > 0) {
+        if (pendingTransactionsCount > 0) {
             const interval = setInterval(() => {
                 refreshPendingTransactions();
             }, 10000); // Check every 10 seconds
 
             return () => clearInterval(interval);
         }
-    }, [transactions, refreshPendingTransactions]);
+    }, [pendingTransactionsCount, refreshPendingTransactions]);
 
     return {
         // State
@@ -245,12 +263,12 @@ export function useTransactionHistoryBackend() {
         getTransaction,
         getTransactionsByStatus,
 
-        // Computed values
-        pendingTransactions: transactions.filter(tx => tx.status === 'pending'),
-        successfulTransactions: transactions.filter(tx => tx.status === 'success'),
-        failedTransactions: transactions.filter(tx => tx.status === 'failed'),
+        // Computed values (memoized)
+        pendingTransactions: useMemo(() => transactions.filter(tx => tx.status === 'pending'), [transactions]),
+        successfulTransactions: useMemo(() => transactions.filter(tx => tx.status === 'success'), [transactions]),
+        failedTransactions: useMemo(() => transactions.filter(tx => tx.status === 'failed'), [transactions]),
         totalTransactions: transactions.length,
-        hasFailedTransactions: transactions.some(tx => tx.status === 'failed'),
-        hasPendingTransactions: transactions.some(tx => tx.status === 'pending'),
+        hasFailedTransactions: useMemo(() => transactions.some(tx => tx.status === 'failed'), [transactions]),
+        hasPendingTransactions: useMemo(() => transactions.some(tx => tx.status === 'pending'), [transactions]),
     };
 }

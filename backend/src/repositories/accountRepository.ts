@@ -1,75 +1,50 @@
-import {CreateSmartAccountInput, SmartAccount, UpdateSmartAccountInput} from '../types';
-import {SmartAccountDocument, SmartAccountModel} from '../models';
+import {AccountModel, IAccount} from '../models/Account.schema';
 
-function transformDocument(doc: SmartAccountDocument): SmartAccount {
-    return {
-        id: doc._id.toString(),
-        userId: doc.userId,
-        address: doc.address,
-        chainId: doc.chainId,
-        isDeployed: doc.isDeployed,
-        balance: doc.balance || undefined,
-        nonce: doc.nonce || undefined,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt
-    };
+export async function createAccount(data: {
+    userId: string;
+    address: string;
+    chainId: number;
+    isDeployed?: boolean;
+    balance?: string;
+    nonce?: number;
+    signerAddress?: string;
+    alchemyAccountId?: string;
+    requestId?: string;
+    salt?: string;
+    accountType?: string;
+    factoryAddress?: string;
+    factoryData?: string
+    isActive?: boolean;
+}): Promise<IAccount> {
+    const account = new AccountModel(data);
+    return await account.save();
 }
 
-function transformCreateInput(data: CreateSmartAccountInput): Partial<SmartAccountDocument> {
-    return {
-        userId: data.userId,
-        address: data.address.toLowerCase(),
-        chainId: data.chainId,
-        isDeployed: data.isDeployed,
-        balance: data.balance,
-        nonce: data.nonce,
-        createdAt: new Date(),
-        updatedAt: new Date()
-    };
+export async function findAccountById(id: string): Promise<IAccount | null> {
+    return AccountModel.findById(id);
 }
 
-function transformUpdateInput(data: UpdateSmartAccountInput) {
-    const updateData: any = {updatedAt: new Date()};
-    if (data.isDeployed !== undefined) updateData.isDeployed = data.isDeployed;
-    if (data.balance !== undefined) updateData.balance = data.balance;
-    if (data.nonce !== undefined) updateData.nonce = data.nonce;
-    return updateData;
+export async function findAccountByAddress(address: string): Promise<IAccount | null> {
+    return AccountModel.findOne({address: address.toLowerCase()});
 }
 
-export async function create(data: CreateSmartAccountInput): Promise<SmartAccount> {
-    const createData = transformCreateInput(data);
-    const doc = new SmartAccountModel(createData);
-    const savedDoc = await doc.save();
-    return transformDocument(savedDoc);
+export async function findAccountsByUserId(userId: string): Promise<IAccount[]> {
+    return AccountModel.find({userId});
 }
 
-export async function findById(id: string): Promise<SmartAccount | null> {
-    const doc = await SmartAccountModel.findById(id);
-    return doc ? transformDocument(doc) : null;
+export async function updateAccount(id: string, data: any): Promise<IAccount | null> {
+    return AccountModel.findByIdAndUpdate(id, data, {new: true});
 }
 
-export async function update(id: string, data: UpdateSmartAccountInput): Promise<SmartAccount | null> {
-    const updateData = transformUpdateInput(data);
-    const doc = await SmartAccountModel.findByIdAndUpdate(
-        id,
-        updateData,
-        {new: true, runValidators: true}
-    );
-
-    return doc ? transformDocument(doc) : null;
+export async function findBy(query: { userId: string, chainId: number }): Promise<IAccount[]> {
+    return AccountModel.find(query);
 }
 
-export async function remove(id: string): Promise<boolean> {
-    const result = await SmartAccountModel.findByIdAndDelete(id);
+export async function deleteAccount(id: string): Promise<boolean> {
+    const result = await AccountModel.findByIdAndDelete(id);
     return !!result;
 }
 
-export async function findByAddress(address: string): Promise<SmartAccount | null> {
-    const doc = await SmartAccountModel.findOne({address: address.toLowerCase()});
-    return doc ? transformDocument(doc) : null;
-}
-
-export async function findByUserId(userId: string): Promise<SmartAccount[]> {
-    const docs = await SmartAccountModel.find({userId});
-    return docs.map(transformDocument);
+export async function findAllAccounts(): Promise<IAccount[]> {
+    return AccountModel.find({});
 }

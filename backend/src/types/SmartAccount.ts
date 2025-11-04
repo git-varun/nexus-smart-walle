@@ -7,6 +7,13 @@ export interface SmartAccount {
     isDeployed: boolean;
     balance?: string;
     nonce?: number;
+    signerAddress?: string;
+    alchemyAccountId?: string;
+    requestId?: string;
+    salt?: string;
+    accountType?: string;
+    factoryAddress?: string;
+    isActive?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }

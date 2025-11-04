@@ -3,11 +3,14 @@ import {
     GasEstimate,
     MaxPriorityFeeResponse,
     SimulationResult,
-    UserOperation,
     UserOpReceipt,
     UserOpResult,
     UserOpStatus
 } from '../types/alchemyTypes';
+import {UserOperation} from "viem/account-abstraction";
+import {createServiceLogger} from "../utils";
+
+const logger = createServiceLogger('BundlerApi');
 
 const TIMEOUT = 10000;
 
@@ -27,7 +30,7 @@ const makeBundlerRequest = async <T>(
         params
     };
 
-    console.log(`Making ${method} request`);
+    logger.info(`Making ${method} request`, params);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT);
@@ -115,9 +118,7 @@ export const getUserOperationReceipt = async (
 export const estimateUserOperationGas = async (
     userOp: UserOperation
 ): Promise<GasEstimate> => {
-    const entryPoint = config.alchemy.entryPointV06;
-    console.log('Estimating UserOperation gas:', userOp.sender);
-
+    const entryPoint = config.alchemy.entryPointV07;
     return await makeBundlerRequest<GasEstimate>(
         'eth_estimateUserOperationGas',
         [userOp, entryPoint]

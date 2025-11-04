@@ -1,13 +1,14 @@
 import {Response} from 'express';
 import {AuthenticatedRequest, getUserId} from '../middleware';
-import {getAccountDetails, getOrCreateUserAccount, getUserAccountInfo} from '../services/account.service';
+import {createUserAccount, getAccountDetails, getUserAccounts} from '../services/account.service';
 import {createServiceLogger} from '../utils';
 
 const logger = createServiceLogger('AccountController');
 
-export async function createOrGetSmartAccount(req: AuthenticatedRequest, res: Response): Promise<void> {
+export async function createSmartAccount(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
         const userId = getUserId(req);
+
         if (!userId) {
             res.status(401).json({
                 success: false,
@@ -19,20 +20,40 @@ export async function createOrGetSmartAccount(req: AuthenticatedRequest, res: Re
             return;
         }
 
-        const {chainId} = req.body;
+        // Extract chainId and accountType with defaults
+        const chainId = req.body.chainId || 84532; // Default to Base Sepolia
+        const accountType = 'la-v2'; // Default to Light Account v2
 
-        if (!chainId) {
+        // Validate chainId
+        if (chainId <= 0) {
             res.status(400).json({
                 success: false,
                 error: {
-                    code: 'MISSING_CHAIN_ID',
-                    message: 'Chain ID is required'
+                    code: 'INVALID_CHAIN_ID',
+                    message: 'Valid chain ID is required'
                 }
             });
             return;
         }
 
-        const result = await getOrCreateUserAccount(userId, chainId);
+        // Validate accountType
+        if (accountType.trim().length === 0) {
+            res.status(400).json({
+                success: false,
+                error: {
+                    code: 'INVALID_ACCOUNT_TYPE',
+                    message: 'Valid account type is required'
+                }
+            });
+            return;
+        }
+
+        logger.info(`Creating account for user ${userId}`, {
+            chainId,
+            accountType
+        });
+
+        const result = await createUserAccount(userId, chainId, accountType);
 
         if (result.success) {
             res.status(201).json({
@@ -90,20 +111,20 @@ export async function getMySmartAccounts(req: AuthenticatedRequest, res: Respons
             return;
         }
 
-        const result = await getUserAccountInfo(userId, parseInt(chainId as string));
+        const result = await getUserAccounts(userId, parseInt(chainId as string));
 
         if (result.success) {
             res.status(200).json({
                 success: true,
                 data: {
-                    account: result.account
+                    accounts: result.accounts || []
                 }
             });
         } else {
             res.status(400).json({
                 success: false,
                 error: {
-                    code: 'GET_ACCOUNT_FAILED',
+                    code: 'GET_ACCOUNTS_FAILED',
                     message: result.error
                 }
             });

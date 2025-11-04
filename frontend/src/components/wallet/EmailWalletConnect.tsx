@@ -187,20 +187,19 @@ export const EmailWalletConnect: React.FC = () => {
                             </motion.div>
                         )}
 
+                        {smartAccountAddress && (
+                            <motion.div
+                                initial={{opacity: 0, y: 10}}
+                                animate={{opacity: 1, y: 0}}
+                                className="text-center py-3"
+                            >
+                                <p className="text-sm text-web3-accent font-medium">
+                                    ✓ Setup complete! Redirecting to dashboard...
+                                </p>
+                            </motion.div>
+                        )}
+
                         <div className="flex gap-3">
-                            {smartAccountAddress && (
-                                <Button
-                                    onClick={() => {
-                                        // Force a re-render of the parent component to show the dashboard
-                                        window.location.reload();
-                                    }}
-                                    variant="primary"
-                                    className="flex-1"
-                                    glow
-                                >
-                                    Go to Dashboard
-                                </Button>
-                            )}
                             <Button
                                 onClick={handleDisconnect}
                                 variant="outline"

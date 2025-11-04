@@ -42,15 +42,14 @@ export const Button: React.FC<ButtonProps> = ({
     const glowClass = glow ? 'animate-pulse-neon' : '';
 
     return (
-        <motion.button
-            whileHover={{scale: disabled ? 1 : 1.02}}
-            whileTap={{scale: disabled ? 1 : 0.98}}
+        <button
             className={cn(
                 baseClasses,
                 variants[variant],
                 sizes[size],
                 glowClass,
-                disabled && 'opacity-50 cursor-not-allowed hover:scale-100',
+                disabled && 'opacity-50 cursor-not-allowed',
+                'hover:scale-105 active:scale-95 transition-transform duration-150',
                 className
             )}
             disabled={disabled || loading}
@@ -71,6 +70,6 @@ export const Button: React.FC<ButtonProps> = ({
                 )}
                 {children}
             </div>
-        </motion.button>
+        </button>
     );
 };

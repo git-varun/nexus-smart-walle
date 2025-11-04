@@ -1,6 +1,5 @@
 // Web3 Modern Card Component
 import React from 'react';
-import {motion} from 'framer-motion';
 import {cn} from '@/utils/cn.ts';
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -31,15 +30,12 @@ export const Card: React.FC<CardProps> = ({
         : '';
 
     return (
-        <motion.div
-            initial={{opacity: 0, y: 20}}
-            animate={{opacity: 1, y: 0}}
-            whileHover={hover ? {y: -4} : undefined}
-            transition={{duration: 0.3}}
+        <div
             className={cn(
                 baseClasses,
                 variants[variant],
                 hoverClasses,
+                hover && 'transition-transform duration-300 hover:-translate-y-1',
                 className
             )}
             {...props}
@@ -52,7 +48,7 @@ export const Card: React.FC<CardProps> = ({
             <div className="relative z-10">
                 {children}
             </div>
-        </motion.div>
+        </div>
     );
 };
 

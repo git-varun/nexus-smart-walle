@@ -1,64 +1,46 @@
 // frontend/src/components/layout/MainLayout.tsx
 import React from 'react';
-import {WalletTypeSelector} from '../wallet/WalletTypeSelector';
-import {WalletDashboard} from '../wallet/WalletDashboard';
+import {AuthenticationPage} from '@/components/auth';
+import {Dashboard} from '../dashboard/Dashboard';
+import {NetworkStatus} from '../NetworkStatus';
 import {useBackendSmartAccount} from '@/hooks/useBackendSmartAccount.ts';
-import {useAccount} from 'wagmi';
-import {useHealthMonitor} from '../../hooks/useHealthMonitor';
 
 export const MainLayout: React.FC = () => {
-    const {isAuthenticated} = useBackendSmartAccount();
-    const {isConnected} = useAccount();
-    const {health, refresh} = useHealthMonitor();
+    const {isAuthenticated, loading, loginWithCredentials} = useBackendSmartAccount();
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-            <div className="container mx-auto px-4 py-8">
-                {/* Header */}
-                <header className="mb-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-4xl font-bold text-white mb-2">
-                                Nexus Smart Wallet
-                            </h1>
-                            <p className="text-slate-400">
-                                ERC-4337 Account Abstraction with Backend API Integration
-                            </p>
-                        </div>
-                    </div>
-                </header>
+    const handleAuthSuccess = async (userData: { user: any; token: string }) => {
+        try {
+            await loginWithCredentials(userData);
+        } catch (error) {
+            console.error('Failed to complete authentication:', error);
+        }
+    };
 
-                {/* Main Content */}
-                <main className="space-y-8">
-                    {/* Show selector if no wallet is connected */}
-                    {!isAuthenticated && !isConnected && (
-                        <WalletTypeSelector/>
-                    )}
-
-                    {/* Show dashboard if any wallet is connected */}
-                    {(isAuthenticated || isConnected) && (
-                        <WalletDashboard/>
-                    )}
-
-                    {/* Fallback */}
-                    {!isAuthenticated && !isConnected && (
-                        <div className="text-center text-white">
-                            <p>No wallet connected. Please choose a connection method above.</p>
-                        </div>
-                    )}
-                </main>
-            </div>
-
-            {/* Health Status Display */}
-            <div className="fixed bottom-4 right-4">
-                <div className={`px-3 py-2 rounded-full text-xs font-medium ${
-                    health.overall === 'healthy' ? 'bg-green-500 text-white' :
-                        health.overall === 'degraded' ? 'bg-yellow-500 text-black' :
-                            'bg-red-500 text-white'
-                }`}>
-                    {health.overall}
+    // Show loading screen while checking authentication
+    if (loading) {
+        return (
+            <div
+                className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+                <div className="text-center text-white">
+                    <div
+                        className="w-16 h-16 border-4 border-web3-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-lg">Loading Nexus Smart Wallet...</p>
+                    <p className="text-sm text-slate-400 mt-2">Checking authentication status</p>
                 </div>
             </div>
-        </div>
+        );
+    }
+
+    // Show authentication page if not authenticated
+    if (!isAuthenticated) {
+        return <AuthenticationPage onAuthSuccess={handleAuthSuccess}/>;
+    }
+
+    // Show main dashboard if authenticated
+    return (
+        <>
+            <Dashboard/>
+            <NetworkStatus/>
+        </>
     );
 };

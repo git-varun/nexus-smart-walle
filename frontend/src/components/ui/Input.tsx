@@ -56,18 +56,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
                     </div>
                 )}
 
-                <motion.input
+                <input
                     ref={ref}
-                    initial={{opacity: 0, scale: 0.98}}
-                    animate={{opacity: 1, scale: 1}}
-                    whileFocus={{scale: 1.02}}
-                    transition={{duration: 0.2}}
                     className={cn(
                         baseClasses,
                         variants[variant],
                         leftIcon && 'pl-10',
                         rightIcon && 'pr-10',
                         errorClasses,
+                        'focus:scale-105 transition-transform duration-150',
                         className
                     )}
                     onFocus={(e) => {

@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from 'react';
 import {Address} from 'viem';
 import {apiClient, SmartAccountInfo, User} from '../services/apiClient';
+import {DEFAULT_CHAIN_ID} from '../config/chains';
 
 // Token management
 const TOKEN_KEY = 'nexus_auth_token';
@@ -21,9 +22,11 @@ export function useBackendSmartAccount() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [accountInfo, setAccountInfo] = useState<SmartAccountInfo | null>(null);
+    const [userAccounts, setUserAccounts] = useState<SmartAccountInfo[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [token, setToken] = useState<string | null>(null);
+    const [currentChainId, setCurrentChainId] = useState<number>(DEFAULT_CHAIN_ID);
 
     // Check authentication status on mount
     useEffect(() => {
@@ -73,18 +76,78 @@ export function useBackendSmartAccount() {
         }
     }, []);
 
-    const loadAccountInfo = useCallback(async (authToken: string) => {
+    const loadUserAccounts = useCallback(async (authToken: string, chainId?: number) => {
         try {
-            // Get or create user's smart account
-            const createResponse = await apiClient.createSmartAccount(authToken);
-            if (createResponse.success && createResponse.data?.account) {
-                setAccountInfo(createResponse.data.account);
+            const targetChainId = chainId || currentChainId;
+            const accountsResponse = await apiClient.getUserAccounts(authToken, targetChainId);
+            if (accountsResponse.success && accountsResponse.data && accountsResponse.data.accounts) {
+                setUserAccounts(accountsResponse.data.accounts);
+            } else {
+                setUserAccounts([]);
+                console.log(`Failed to load user accounts for chain ${targetChainId}:`, accountsResponse.error?.message || 'Unknown error');
+            }
+        } catch (err) {
+            console.error('Failed to load user accounts:', err);
+            setUserAccounts([]);
+        }
+    }, [currentChainId]);
+
+    const loadAccountInfo = useCallback(async (authToken: string, chainId?: number) => {
+        try {
+            // Load user accounts for the specified chain
+            const targetChainId = chainId || currentChainId;
+            const accountsResponse = await apiClient.getUserAccounts(authToken, targetChainId);
+            if (accountsResponse.success && accountsResponse.data && accountsResponse.data.accounts) {
+                setUserAccounts(accountsResponse.data.accounts);
+
+                if (accountsResponse.data.accounts.length > 0) {
+                    // Use the first account as the primary account
+                    setAccountInfo(accountsResponse.data.accounts[0]);
+                } else {
+                    // No accounts exist for this chain - this should trigger the AccountCreation flow in Dashboard
+                    console.log(`No accounts found for chain ${targetChainId} - user will need to create one`);
+                    setAccountInfo(null);
+                }
+            } else {
+                // API call failed or returned no data
+                setUserAccounts([]);
+                setAccountInfo(null);
+                console.log(`Failed to load accounts for chain ${targetChainId}:`, accountsResponse.error?.message || 'Unknown error');
             }
         } catch (err) {
             console.error('Failed to load account info:', err);
             setError(err instanceof Error ? err.message : 'Failed to load account info');
         }
-    }, []);
+    }, [currentChainId]);
+
+    const loginWithCredentials = useCallback(async (userData: { user: any; token: string }) => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const {user: userInfo, token: authToken} = userData;
+
+            // Store token
+            setStoredToken(authToken);
+            setToken(authToken);
+
+            // Update state
+            setIsAuthenticated(true);
+            setUser(userInfo);
+
+            // Load account info (this will create account if it doesn't exist)
+            await loadAccountInfo(authToken);
+
+            console.log('✅ Authentication successful:', {user: userInfo});
+            return {user: userInfo, token: authToken};
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Authentication failed';
+            setError(errorMessage);
+            throw new Error(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    }, [loadAccountInfo]);
 
     const connect = useCallback(async (email: string) => {
         try {
@@ -175,20 +238,42 @@ export function useBackendSmartAccount() {
         }
     }, [isAuthenticated, token]);
 
+    const switchChain = useCallback(async (newChainId: number) => {
+        if (newChainId === currentChainId) {
+            return; // Already on this chain
+        }
+
+        setCurrentChainId(newChainId);
+
+        // If authenticated, reload account data for the new chain
+        if (isAuthenticated && token) {
+            try {
+                await loadAccountInfo(token, newChainId);
+            } catch (err) {
+                console.error('Failed to load account info for new chain:', err);
+            }
+        }
+    }, [currentChainId, isAuthenticated, token, loadAccountInfo]);
+
     return {
         // State
         isAuthenticated,
         user,
         accountInfo,
+        userAccounts,
         loading,
         error,
         token,
+        currentChainId,
 
         // Actions
         connect,
+        loginWithCredentials,
         disconnect,
         sendTransaction,
         checkAuthStatus,
+        loadUserAccounts,
+        switchChain,
 
         // Computed values
         smartAccountAddress: accountInfo?.address || null,
@@ -197,7 +282,7 @@ export function useBackendSmartAccount() {
         // Compatibility properties for existing components
         isConnected: isAuthenticated,
         isChainSupported: true,
-        chainId: 84532,
+        chainId: currentChainId,
         isCreatingAccount: loading,
         creationProgress: null,
         createSmartAccount: () => Promise.resolve(),
